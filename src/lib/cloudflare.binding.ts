@@ -19,6 +19,7 @@ export interface CloudflareBindings {
   NEW_RELIC_LOG_ENDPOINT?: string;
 
   TIMEZONE?: string;
+  CONFIG_ENCRYPTION_KEY?: string;
 
   /**
    * @deprecated Vendor credentials now live in the email_vendors D1 table.

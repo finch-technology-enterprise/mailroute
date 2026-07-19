@@ -8,6 +8,7 @@ import { ApiResponse } from "../utils/response.util";
 import { ApiAuthKeyMiddleware } from "../middlewares/api-auth-key.middleware";
 import { EmailVendor, EmailTemplate, ServiceConfig } from "../db/schema";
 import { EmailService } from "../services/email.service";
+import { encrypt, decrypt, isEncrypted, generateSecret } from "../lib/crypto";
 
 type Bindings = { Bindings: CloudflareBindings };
 const admin = new Hono<Bindings>();
@@ -141,10 +142,17 @@ admin.post("/test-send", zValidator("json", testSendSchema), async (c) => {
 
 // --- Config ---
 
+const encKey = (c: any) => (c.env as Record<string, string | undefined>).CONFIG_ENCRYPTION_KEY || "";
+
 admin.get("/config", async (c) => {
   const db = drizzle(c.env.D1_DATABASE);
   const rows = await db.select().from(ServiceConfig).all();
-  return c.json(ApiResponse(true, null, rows));
+  const mapped = rows.map((r) => ({
+    ...r,
+    value: r.value.length > 64 && isEncrypted(r.value) ? r.value.slice(0, 20) + "…(encrypted)" : r.value,
+    encrypted: isEncrypted(r.value),
+  }));
+  return c.json(ApiResponse(true, null, mapped));
 });
 
 const configUpdateSchema = z.object({ value: z.string() });
@@ -154,10 +162,62 @@ admin.put("/config/:service/:key", zValidator("json", configUpdateSchema), async
   const service = c.req.param("service");
   const key = c.req.param("key");
   const { value } = c.req.valid("json");
-  await db.update(ServiceConfig).set({ value }).where(
+  const finalVal = isEncrypted(value) ? value : value;
+  await db.update(ServiceConfig).set({ value: finalVal }).where(
     eq(ServiceConfig.service, service) && eq(ServiceConfig.key, key)
   ).execute();
   return c.json(ApiResponse(true, "Config updated"));
+});
+
+admin.post("/config/:service/:key/encrypt", async (c) => {
+  const key = encKey(c);
+  if (!key) return c.json(ApiResponse(false, "CONFIG_ENCRYPTION_KEY not set"), 400);
+  const db = drizzle(c.env.D1_DATABASE);
+  const service = c.req.param("service");
+  const k = c.req.param("key");
+  const row = await db.select().from(ServiceConfig).where(
+    eq(ServiceConfig.service, service) && eq(ServiceConfig.key, k)
+  ).get();
+  if (!row) return c.json(ApiResponse(false, "Not found"), 404);
+  if (isEncrypted(row.value)) return c.json(ApiResponse(false, "Already encrypted"));
+  const encrypted = await encrypt(row.value, key);
+  await db.update(ServiceConfig).set({ value: encrypted }).where(
+    eq(ServiceConfig.service, service) && eq(ServiceConfig.key, k)
+  ).execute();
+  return c.json(ApiResponse(true, "Encrypted"));
+});
+
+admin.post("/config/:service/:key/decrypt", async (c) => {
+  const key = encKey(c);
+  if (!key) return c.json(ApiResponse(false, "CONFIG_ENCRYPTION_KEY not set"), 400);
+  const db = drizzle(c.env.D1_DATABASE);
+  const service = c.req.param("service");
+  const k = c.req.param("key");
+  const row = await db.select().from(ServiceConfig).where(
+    eq(ServiceConfig.service, service) && eq(ServiceConfig.key, k)
+  ).get();
+  if (!row) return c.json(ApiResponse(false, "Not found"), 404);
+  if (!isEncrypted(row.value)) return c.json(ApiResponse(false, "Not encrypted"));
+  const decrypted = await decrypt(row.value, key);
+  return c.json(ApiResponse(true, null, { value: decrypted }));
+});
+
+admin.post("/config/:service/:key/rotate", async (c) => {
+  const key = encKey(c);
+  if (!key) return c.json(ApiResponse(false, "CONFIG_ENCRYPTION_KEY not set"), 400);
+  const db = drizzle(c.env.D1_DATABASE);
+  const service = c.req.param("service");
+  const k = c.req.param("key");
+  const row = await db.select().from(ServiceConfig).where(
+    eq(ServiceConfig.service, service) && eq(ServiceConfig.key, k)
+  ).get();
+  if (!row) return c.json(ApiResponse(false, "Not found"), 404);
+  const newValue = generateSecret();
+  const encrypted = await encrypt(newValue, key);
+  await db.update(ServiceConfig).set({ value: encrypted }).where(
+    eq(ServiceConfig.service, service) && eq(ServiceConfig.key, k)
+  ).execute();
+  return c.json(ApiResponse(true, "Rotated", { value: newValue }));
 });
 
 // --- Logs (stub — returns empty until send_logs table exists) ---
