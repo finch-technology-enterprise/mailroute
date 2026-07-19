@@ -1,6 +1,7 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet } from "react-router-dom";
 import { hasAuthKey, clearAuthKey } from "../api/client";
 import { useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 
 const navItems = [
   { to: "/", label: "Dashboard" },
@@ -9,106 +10,155 @@ const navItems = [
   { to: "/test-send", label: "Test Send" },
 ];
 
-export default function Layout() {
-  const navigate = useNavigate();
-  const [showKeyInput, setShowKeyInput] = useState(false);
+function AuthScreen() {
   const [keyValue, setKeyValue] = useState("");
 
-  const handleLogout = () => {
-    clearAuthKey();
-    window.location.reload();
-  };
-
-  const handleKeyUpdate = () => {
+  const handleSubmit = () => {
     if (keyValue) {
       localStorage.setItem("mailroute_api_key", keyValue);
-      setShowKeyInput(false);
       setKeyValue("");
     }
   };
 
-  if (!hasAuthKey()) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="w-full max-w-sm rounded-lg bg-white p-8 shadow">
-          <h1 className="mb-6 text-xl font-semibold">mailroute Admin</h1>
-          <p className="mb-4 text-sm text-gray-600">
-            Enter your API auth key to continue.
-          </p>
+  return (
+    <div className="flex min-h-screen items-center justify-center" style={{ background: "var(--bg-primary)" }}>
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: "spring", bounce: 0, duration: 0.5 }}
+        className="card p-10 w-full max-w-sm mx-4"
+      >
+        <h1 className="mb-1 text-2xl" style={{ fontWeight: 700, letterSpacing: "-0.03em" }}>mailroute</h1>
+        <p className="mb-8" style={{ color: "var(--text-secondary)", fontSize: 14 }}>Enter your API auth key to continue.</p>
+        <div className="flex flex-col gap-3">
           <input
             type="password"
-            className="mb-4 w-full rounded border px-3 py-2 text-sm"
+            className="apple-input"
             placeholder="API_AUTH_KEY"
             value={keyValue}
             onChange={(e) => setKeyValue(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleKeyUpdate()}
+            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+            autoFocus
           />
-          <button
-            className="w-full rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-            onClick={handleKeyUpdate}
+          <motion.button
+            className="apple-btn apple-btn-primary w-full justify-center"
+            onClick={handleSubmit}
+            whileTap={{ scale: 0.97 }}
+            transition={{ type: "spring", bounce: 0, duration: 0.15 }}
           >
             Connect
-          </button>
+          </motion.button>
         </div>
-      </div>
-    );
-  }
+      </motion.div>
+    </div>
+  );
+}
+
+function SettingsPopover({ onClose }: { onClose: () => void }) {
+  const [keyValue, setKeyValue] = useState("");
+
+  const handleSave = () => {
+    if (keyValue) {
+      localStorage.setItem("mailroute_api_key", keyValue);
+      setKeyValue("");
+    }
+  };
 
   return (
-    <div className="flex min-h-screen">
-      <nav className="flex w-56 flex-col border-r bg-white px-4 py-6">
-        <h1 className="mb-8 px-2 text-lg font-bold text-gray-800">mailroute</h1>
+    <motion.div
+      initial={{ opacity: 0, y: -4, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -4, scale: 0.96 }}
+      transition={{ type: "spring", bounce: 0, duration: 0.25 }}
+      className="card p-4 mb-2"
+      style={{ position: "absolute", bottom: "100%", left: 0, right: 0, marginBottom: 8 }}
+    >
+      <input
+        type="password"
+        className="apple-input mb-2"
+        style={{ fontSize: 13, padding: "8px 12px" }}
+        placeholder="New API key"
+        value={keyValue}
+        onChange={(e) => setKeyValue(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && handleSave()}
+        autoFocus
+      />
+      <div className="flex gap-2">
+        <motion.button
+          className="apple-btn apple-btn-primary"
+          style={{ fontSize: 12, padding: "6px 14px", flex: 1 }}
+          onClick={handleSave}
+          whileTap={{ scale: 0.97 }}
+        >
+          Save
+        </motion.button>
+        <motion.button
+          className="apple-btn apple-btn-secondary"
+          style={{ fontSize: 12, padding: "6px 14px", flex: 1 }}
+          onClick={() => { clearAuthKey(); window.location.reload(); }}
+          whileTap={{ scale: 0.97 }}
+        >
+          Disconnect
+        </motion.button>
+      </div>
+    </motion.div>
+  );
+}
+
+export default function Layout() {
+  const [showSettings, setShowSettings] = useState(false);
+
+  if (!hasAuthKey()) return <AuthScreen />;
+
+  return (
+    <div className="flex min-h-screen" style={{ background: "var(--bg-primary)" }}>
+      <nav className="glass-sidebar flex w-60 flex-col px-5 py-8 fixed h-screen z-10">
+        <h2 className="mb-10 px-2 text-xl" style={{ fontWeight: 700, letterSpacing: "-0.03em" }}>mailroute</h2>
+
         <div className="flex flex-col gap-1">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               end={item.to === "/"}
-              className={({ isActive }) =>
-                `rounded px-3 py-2 text-sm font-medium transition-colors ${
-                  isActive
-                    ? "bg-blue-50 text-blue-700"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                }`
-              }
+              className="relative px-3 py-2.5 text-sm font-medium rounded-lg transition-colors"
+              style={{ color: "var(--text-secondary)", letterSpacing: "-0.01em" }}
             >
-              {item.label}
+              {({ isActive }) => (
+                <>
+                  {isActive && (
+                    <motion.span
+                      layoutId="nav-pill"
+                      className="absolute inset-0 rounded-lg"
+                      style={{ background: "rgba(0, 113, 227, 0.08)" }}
+                      transition={{ type: "spring", bounce: 0, duration: 0.35 }}
+                    />
+                  )}
+                  <span className="relative z-10" style={{ color: isActive ? "var(--accent)" : undefined, fontWeight: isActive ? 600 : 500 }}>
+                    {item.label}
+                  </span>
+                </>
+              )}
             </NavLink>
           ))}
         </div>
-        <div className="mt-auto flex flex-col gap-2 pt-4">
-          <button
-            className="rounded px-3 py-2 text-left text-sm text-gray-500 hover:bg-gray-50"
-            onClick={() => setShowKeyInput(!showKeyInput)}
+
+        <div className="mt-auto pt-4 relative">
+          <motion.button
+            className="apple-btn-ghost w-full justify-start text-sm"
+            style={{ fontSize: 13, fontWeight: 500, color: "var(--text-tertiary)", padding: "8px 12px", borderRadius: "var(--radius-md)" }}
+            onClick={() => setShowSettings(!showSettings)}
+            whileTap={{ scale: 0.98 }}
           >
             Settings
-          </button>
-          {showKeyInput && (
-            <div className="rounded border p-3">
-              <input
-                type="password"
-                className="mb-2 w-full rounded border px-2 py-1 text-xs"
-                placeholder="New API key"
-                value={keyValue}
-                onChange={(e) => setKeyValue(e.target.value)}
-              />
-              <button
-                className="mr-2 rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700"
-                onClick={handleKeyUpdate}
-              >
-                Save
-              </button>
-              <button
-                className="rounded px-2 py-1 text-xs text-gray-500 hover:text-gray-700"
-                onClick={handleLogout}
-              >
-                Disconnect
-              </button>
-            </div>
-          )}
+          </motion.button>
+          <AnimatePresence>
+            {showSettings && <SettingsPopover onClose={() => setShowSettings(false)} />}
+          </AnimatePresence>
         </div>
       </nav>
-      <main className="flex-1 overflow-auto p-8">
+
+      <main className="flex-1 ml-60 p-10">
         <Outlet />
       </main>
     </div>

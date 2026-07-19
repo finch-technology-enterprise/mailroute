@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import type { Template, TemplateFormData } from "../types";
 
 interface TemplateFormProps {
@@ -24,8 +25,6 @@ export default function TemplateForm({ open, template, onSave, onClose }: Templa
     setError("");
   }, [template, open]);
 
-  if (!open) return null;
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -49,31 +48,52 @@ export default function TemplateForm({ open, template, onSave, onClose }: Templa
     setForm((prev) => ({ ...prev, [key]: value }));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={onClose}>
-      <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <h2 className="mb-4 text-lg font-semibold">{template ? "Edit Template" : "Add Template"}</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Slug</label>
-            <input className="w-full rounded border px-3 py-2 text-sm font-mono" value={form.slug} onChange={(e) => set("slug", e.target.value)} disabled={!!template} required placeholder="e.g., welcome-email" />
-            <p className="mt-1 text-xs text-gray-400">Lowercase letters, numbers, and hyphens only.</p>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Subject</label>
-            <input className="w-full rounded border px-3 py-2 text-sm" value={form.subject} onChange={(e) => set("subject", e.target.value)} required placeholder="Welcome to {{app_name}}!" />
-            <p className="mt-1 text-xs text-gray-400">Use <code className="rounded bg-gray-100 px-1">{'{{key}}'}</code> for placeholders.</p>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Content (HTML)</label>
-            <textarea className="w-full rounded border px-3 py-2 text-sm font-mono" rows={12} value={form.content} onChange={(e) => set("content", e.target.value)} required placeholder="<h1>Welcome, {{name}}!</h1>" />
-          </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <div className="flex justify-end gap-3 pt-2">
-            <button type="button" className="rounded-lg border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50" onClick={onClose} disabled={saving}>Cancel</button>
-            <button type="submit" className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50" disabled={saving}>{saving ? "Saving..." : "Save"}</button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+          className="modal-overlay"
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ type: "spring", bounce: 0, duration: 0.3 }}
+            className="modal-surface"
+            style={{ maxWidth: 600 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="mb-6">{template ? "Edit Template" : "Add Template"}</h2>
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label className="apple-label">Slug</label>
+                <input className="apple-input code" value={form.slug} onChange={(e) => set("slug", e.target.value)} disabled={!!template} required placeholder="e.g., welcome-email" />
+                <p className="apple-hint">Lowercase letters, numbers, and hyphens only.</p>
+              </div>
+              <div>
+                <label className="apple-label">Subject</label>
+                <input className="apple-input" value={form.subject} onChange={(e) => set("subject", e.target.value)} required placeholder="Welcome to {{app_name}}!" />
+                <p className="apple-hint">Use <code>{'{{key}}'}</code> for placeholders.</p>
+              </div>
+              <div>
+                <label className="apple-label">Content (HTML)</label>
+                <textarea className="apple-input code" rows={12} value={form.content} onChange={(e) => set("content", e.target.value)} required placeholder="<h1>Welcome, {{name}}!</h1>" />
+              </div>
+              {error && <div className="apple-error">{error}</div>}
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" className="apple-btn apple-btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
+                <motion.button type="submit" className="apple-btn apple-btn-primary" disabled={saving} whileTap={{ scale: 0.97 }} transition={{ type: "spring", bounce: 0, duration: 0.12 }}>
+                  {saving ? "Saving..." : "Save"}
+                </motion.button>
+              </div>
+            </form>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

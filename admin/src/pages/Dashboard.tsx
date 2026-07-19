@@ -1,7 +1,30 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "motion/react";
 import { getStats } from "../api/admin";
 import type { Stats } from "../types";
+
+function StatCard({ label, value, actionLabel, onClick, index }: { label: string; value: string; actionLabel: string; onClick: () => void; index: number }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: "spring", bounce: 0, duration: 0.4, delay: index * 0.08 }}
+      className="card p-7"
+    >
+      <p className="text-sm font-medium" style={{ color: "var(--text-secondary)", letterSpacing: "0.02em", textTransform: "uppercase", fontSize: 11 }}>{label}</p>
+      <p className="mt-3" style={{ fontSize: 40, fontWeight: 700, letterSpacing: "-0.04em", lineHeight: 1, color: "var(--text-primary)" }}>{value}</p>
+      <motion.button
+        className="apple-btn-ghost mt-5 -ml-2"
+        onClick={onClick}
+        whileTap={{ scale: 0.97 }}
+        transition={{ type: "spring", bounce: 0, duration: 0.12 }}
+      >
+        {actionLabel} →
+      </motion.button>
+    </motion.div>
+  );
+}
 
 export default function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
@@ -16,36 +39,47 @@ export default function Dashboard() {
   }, []);
 
   return (
-    <div>
-      <h1 className="mb-8 text-2xl font-bold">Dashboard</h1>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ type: "spring", bounce: 0, duration: 0.35 }}
+    >
+      <h1 className="mb-10">Dashboard</h1>
 
       {loading ? (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-28 animate-pulse rounded-lg bg-white shadow" />
+            <div key={i} className="card p-7">
+              <div className="skeleton" style={{ height: 11, width: "40%", background: "var(--border)", borderRadius: "var(--radius-sm)", marginBottom: 16 }} />
+              <div className="skeleton" style={{ height: 40, width: "30%", background: "var(--border)", borderRadius: "var(--radius-sm)" }} />
+            </div>
           ))}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          <div className="rounded-lg bg-white p-6 shadow transition-shadow hover:shadow-md">
-            <p className="text-sm font-medium text-gray-500">Vendors</p>
-            <p className="mt-2 text-3xl font-bold">{stats?.vendorCount ?? 0}</p>
-            <button className="mt-4 text-sm text-blue-600 hover:text-blue-800" onClick={() => navigate("/vendors")}>Manage vendors &rarr;</button>
-          </div>
-
-          <div className="rounded-lg bg-white p-6 shadow transition-shadow hover:shadow-md">
-            <p className="text-sm font-medium text-gray-500">Templates</p>
-            <p className="mt-2 text-3xl font-bold">{stats?.templateCount ?? 0}</p>
-            <button className="mt-4 text-sm text-blue-600 hover:text-blue-800" onClick={() => navigate("/templates")}>Manage templates &rarr;</button>
-          </div>
-
-          <div className="rounded-lg bg-white p-6 shadow transition-shadow hover:shadow-md">
-            <p className="text-sm font-medium text-gray-500">Quick Test</p>
-            <p className="mt-2 text-sm text-gray-500">Send a test email to verify your configuration.</p>
-            <button className="mt-4 text-sm text-blue-600 hover:text-blue-800" onClick={() => navigate("/test-send")}>Send test &rarr;</button>
-          </div>
+          <StatCard
+            label="Vendors"
+            value={String(stats?.vendorCount ?? 0)}
+            actionLabel="Manage vendors"
+            onClick={() => navigate("/vendors")}
+            index={0}
+          />
+          <StatCard
+            label="Templates"
+            value={String(stats?.templateCount ?? 0)}
+            actionLabel="Manage templates"
+            onClick={() => navigate("/templates")}
+            index={1}
+          />
+          <StatCard
+            label="Quick Test"
+            value=""
+            actionLabel="Send test"
+            onClick={() => navigate("/test-send")}
+            index={2}
+          />
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { motion } from "motion/react";
 import Table from "../components/Table";
 import StatusBadge from "../components/StatusBadge";
 import EmptyState from "../components/EmptyState";
@@ -64,40 +65,51 @@ export default function Vendors() {
     }
   };
 
-  const openEdit = (vendor: Vendor) => {
-    setEditingVendor(vendor);
-    setFormOpen(true);
-  };
-
-  const openAdd = () => {
-    setEditingVendor(null);
-    setFormOpen(true);
-  };
-
   return (
-    <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Vendors</h1>
-        <button className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700" onClick={openAdd}>Add Vendor</button>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ type: "spring", bounce: 0, duration: 0.35 }}
+    >
+      <div className="mb-8 flex items-center justify-between">
+        <h1>Vendors</h1>
+        <motion.button
+          className="apple-btn apple-btn-primary"
+          onClick={() => { setEditingVendor(null); setFormOpen(true); }}
+          whileTap={{ scale: 0.97 }}
+          transition={{ type: "spring", bounce: 0, duration: 0.12 }}
+        >
+          Add Vendor
+        </motion.button>
       </div>
 
-      {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error} <button className="ml-2 underline" onClick={fetchVendors}>Retry</button></div>}
+      {error && (
+        <div className="apple-error mb-6 flex items-center justify-between">
+          <span>{error}</span>
+          <button className="apple-link" style={{ fontSize: 12 }} onClick={fetchVendors}>Retry</button>
+        </div>
+      )}
 
       {!loading && vendors.length === 0 ? (
-        <EmptyState title="No vendors configured" description="Add your first email vendor to start sending emails through the failover chain." actionLabel="Add Vendor" onAction={openAdd} />
+        <EmptyState
+          title="No vendors configured"
+          description="Add your first email vendor to start sending emails through the failover chain."
+          actionLabel="Add Vendor"
+          onAction={() => { setEditingVendor(null); setFormOpen(true); }}
+        />
       ) : (
         <Table
           columns={[
-            { key: "name", header: "Name", render: (v: Vendor) => <span className="font-medium">{v.name}</span> },
+            { key: "name", header: "Name", render: (v: Vendor) => <span style={{ fontWeight: 500 }}>{v.name}</span> },
             { key: "enabled", header: "Status", render: (v: Vendor) => <StatusBadge enabled={v.enabled} onToggle={() => handleToggle(v)} /> },
-            { key: "priority", header: "Priority", render: (v: Vendor) => v.priority },
-            { key: "fromEmail", header: "From", render: (v: Vendor) => <span className="text-gray-500">{v.fromEmail}</span> },
+            { key: "priority", header: "Priority", render: (v: Vendor) => <span style={{ color: "var(--text-secondary)" }}>{v.priority}</span> },
+            { key: "fromEmail", header: "From", render: (v: Vendor) => <span style={{ color: "var(--text-secondary)" }}>{v.fromEmail}</span> },
             {
               key: "actions", header: "", className: "text-right",
               render: (v: Vendor) => (
-                <div className="flex justify-end gap-2">
-                  <button className="text-sm text-blue-600 hover:text-blue-800" onClick={() => openEdit(v)}>Edit</button>
-                  <button className="text-sm text-red-600 hover:text-red-800" onClick={() => setDeleteTarget(v)}>Delete</button>
+                <div className="flex justify-end gap-1">
+                  <button className="apple-link" onClick={() => { setEditingVendor(v); setFormOpen(true); }}>Edit</button>
+                  <button className="apple-link apple-link-danger" onClick={() => setDeleteTarget(v)}>Delete</button>
                 </div>
               ),
             },
@@ -109,15 +121,14 @@ export default function Vendors() {
       )}
 
       <VendorForm open={formOpen} vendor={editingVendor} onSave={handleSave} onClose={() => { setFormOpen(false); setEditingVendor(null); }} />
-
       <ConfirmDialog
         open={!!deleteTarget}
         title="Delete Vendor"
-        message={`Are you sure you want to delete "${deleteTarget?.name}"? This action cannot be undone.`}
+        message={`Are you sure you want to delete "${deleteTarget?.name}"? This cannot be undone.`}
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
         isLoading={deleting}
       />
-    </div>
+    </motion.div>
   );
 }
