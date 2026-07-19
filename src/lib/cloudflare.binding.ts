@@ -35,4 +35,6 @@ export interface CloudflareBindings {
   D1_DATABASE: D1Database;
 
   RATE_LIMITER: RateLimit;
+
+  ADMIN_ASSETS: Fetcher;
 }

@@ -11,6 +11,7 @@ import { ErrorHandler } from "./middlewares/error.middleware";
 
 // Routes
 import generalRoutes from "./routes/general.routes";
+import adminRoutes from "./routes/admin.routes";
 
 const MAX_BODY_SIZE_KB = 50;
 const MAX_BODY_SIZE = 1024 * MAX_BODY_SIZE_KB;
@@ -45,6 +46,21 @@ app.onError(ErrorHandler);
  *  Public Routes
  */
 app.route("/", generalRoutes);
+
+/**
+ *  Admin Routes (auth via X-API-AUTH-KEY)
+ */
+app.route("/admin", adminRoutes);
+
+/**
+ *  SPA Serving — catch-all for /email/admin/* client-side routing
+ */
+app.get("/admin/:path*", async (c) => {
+  const path = c.req.param("path") || "index.html";
+  const res = await c.env.ADMIN_ASSETS.fetch(new URL(path, "http://localhost"));
+  if (res.status === 200) return res;
+  return c.env.ADMIN_ASSETS.fetch(new URL("index.html", "http://localhost"));
+});
 
 export default {
   /**
