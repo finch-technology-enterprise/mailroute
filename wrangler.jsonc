@@ -4,14 +4,7 @@
   "account_id": "28970b96b4880e4f41cc0487104898a0",
   "main": "src/index.ts",
   "compatibility_date": "2026-06-10",
-  "workers_dev": false,
-  "preview_urls": false,
-  "routes": [
-    {
-      "pattern": "mailroute.example.com/email/api/*",
-      "zone_name": "example.com"
-    }
-  ],
+  "workers_dev": true,
   "assets": {
     "directory": "admin/dist",
     "binding": "ADMIN_ASSETS"
