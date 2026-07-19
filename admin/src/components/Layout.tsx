@@ -1,13 +1,13 @@
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { hasAuthKey, clearAuthKey } from "../api/client";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { AnimatePresence, motion } from "motion/react";
 
 const navItems = [
-  { to: "/", label: "Dashboard", icon: "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='3' width='7' height='9'/><rect x='14' y='3' width='7' height='5'/><rect x='14' y='12' width='7' height='9'/><rect x='3' y='16' width='7' height='5'/></svg>" },
-  { to: "/vendors", label: "Vendors", icon: "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/><circle cx='12' cy='7' r='4'/></svg>" },
-  { to: "/templates", label: "Templates", icon: "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z'/><polyline points='14 2 14 8 20 8'/><line x1='16' y1='13' x2='8' y2='13'/><line x1='16' y1='17' x2='8' y2='17'/><polyline points='10 9 9 9 8 9'/></svg>" },
-  { to: "/test-send", label: "Test Send", icon: "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><polygon points='22 2 11 13'/><polygon points='22 2 15 22 11 13 2 9 22 2'/></svg>" },
+  { to: "/", label: "Dashboard", icon: "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='3' width='7' height='7' rx='1'/><rect x='14' y='3' width='7' height='7' rx='1'/><rect x='3' y='14' width='7' height='7' rx='1'/><rect x='14' y='14' width='7' height='7' rx='1'/></svg>" },
+  { to: "/vendors", label: "Vendors", icon: "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2'/><circle cx='9' cy='7' r='4'/><path d='M23 21v-2a4 4 0 0 0-3-3.87'/><path d='M16 3.13a4 4 0 0 1 0 7.75'/></svg>" },
+  { to: "/templates", label: "Templates", icon: "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/><line x1='16' y1='13' x2='8' y2='13'/><line x1='16' y1='17' x2='8' y2='17'/></svg>" },
+  { to: "/test-send", label: "Test Send", icon: "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M22 2L11 13'/><path d='M22 2L15 22l-4-9-9-4z'/></svg>" },
 ];
 
 function AuthScreen() {
@@ -169,22 +169,35 @@ function NavPills() {
 
 function BottomNav() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const activeTo = location.pathname === "/admin" || location.pathname === "/admin/" ? "/" : location.pathname.replace("/admin", "") || "/";
 
   return (
-    <nav className="bottom-nav" style={{ zIndex: 50 }}>
+    <nav className="bottom-nav">
       <div className="bottom-nav-inner">
         {navItems.map((item) => {
-          const isActive = item.to === "/" ? location.pathname === "/admin/" || location.pathname === "/admin" : location.pathname.startsWith(`/admin${item.to}`);
+          const isActive = activeTo === item.to || (item.to !== "/" && activeTo.startsWith(item.to));
           return (
-            <NavLink
+            <button
               key={item.to}
-              to={item.to}
-              end={item.to === "/"}
+              type="button"
               className={`bottom-nav-item ${isActive ? "active" : ""}`}
+              onClick={() => navigate(item.to)}
             >
-              <span className="bottom-nav-icon" dangerouslySetInnerHTML={{ __html: item.icon }} />
-              <span>{item.label}</span>
-            </NavLink>
+              <motion.span
+                className="bottom-nav-icon"
+                dangerouslySetInnerHTML={{ __html: item.icon }}
+                animate={{ scale: isActive ? 1.05 : 1 }}
+                transition={{ type: "spring", bounce: 0.2, duration: 0.3 }}
+              />
+              <motion.span
+                animate={{ y: isActive ? -1 : 0 }}
+                transition={{ type: "spring", bounce: 0, duration: 0.2 }}
+                style={{ fontSize: 11, fontWeight: isActive ? 600 : 500 }}
+              >
+                {item.label}
+              </motion.span>
+            </button>
           );
         })}
       </div>

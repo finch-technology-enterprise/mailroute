@@ -476,7 +476,6 @@ textarea.apple-input {
   border-top: 1px solid var(--border);
   padding-bottom: var(--sab);
   display: none;
-  /* Prevent nav from capturing touches when modal is open */
   pointer-events: auto;
 }
 
@@ -488,6 +487,8 @@ body:has(.modal-overlay) .bottom-nav {
   display: flex;
   align-items: stretch;
   height: var(--bottom-nav-height);
+  padding: 6px 8px;
+  gap: 2px;
 }
 
 .bottom-nav-item {
@@ -496,44 +497,39 @@ body:has(.modal-overlay) .bottom-nav {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 3px;
   text-decoration: none;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
   color: var(--text-tertiary);
-  letter-spacing: 0.02em;
+  letter-spacing: -0.01em;
   -webkit-tap-highlight-color: transparent;
   position: relative;
   transition: color 0.15s ease;
   min-height: 44px;
+  border-radius: var(--radius-md);
 }
 
 .bottom-nav-item.active {
   color: var(--accent);
-}
-
-.bottom-nav-item.active::before {
-  content: '';
-  position: absolute;
-  top: 4px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 20px;
-  height: 3px;
-  border-radius: 1.5px;
-  background: var(--accent);
+  font-weight: 600;
 }
 
 .bottom-nav-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
+  transition: transform 0.15s ease;
+}
+
+.bottom-nav-item.active .bottom-nav-icon {
+  transform: scale(1.05);
 }
 
 @media (max-width: 768px) {
-  .sidebar-nav { display: none; }
+  .sidebar-nav { display: none !important; pointer-events: none; }
   .bottom-nav { display: flex; }
   main { margin-left: 0 !important; padding: 20px 16px !important; padding-bottom: calc(var(--bottom-nav-height) + var(--sab) + 20px) !important; }
   .card { border-radius: var(--radius-lg); }
