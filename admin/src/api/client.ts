@@ -1,4 +1,4 @@
-const API_BASE = "/email/api/admin";
+const API_BASE = "/api/admin";
 
 function getAuthKey(): string {
   return localStorage.getItem("mailroute_api_key") || "";

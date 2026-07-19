@@ -16,8 +16,8 @@ import adminRoutes from "./routes/admin.routes";
 const MAX_BODY_SIZE_KB = 50;
 const MAX_BODY_SIZE = 1024 * MAX_BODY_SIZE_KB;
 
-// API app scoped to /email/api
-const api = new Hono<{ Bindings: CloudflareBindings }>().basePath("/email/api");
+// API app scoped to /api
+const api = new Hono<{ Bindings: CloudflareBindings }>().basePath("/api");
 
 api.use(
   "*",
@@ -37,13 +37,13 @@ api.onError(ErrorHandler);
 api.route("/", generalRoutes);
 api.route("/admin", adminRoutes);
 
-// Main app — mounts the API and serves the SPA at /email/admin/*
+// Main app — mounts the API and serves the SPA at /admin/*
 const app = new Hono<{ Bindings: CloudflareBindings }>();
 app.route("/", api);
 
-app.get("/email/admin*", async (c) => {
+app.get("/admin*", async (c) => {
   const url = new URL(c.req.url);
-  let path = url.pathname.replace("/email/admin", "") || "/";
+  let path = url.pathname.replace("/admin", "") || "/";
   path = path === "/" ? "/index.html" : path;
   const reqUrl = new URL(path, "http://assets");
   const res = await c.env.ADMIN_ASSETS.fetch(reqUrl);

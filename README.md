@@ -14,10 +14,10 @@ All responses use the `ApiResponse(success, message, data?)` envelope.
 
 | Method | Path                       | Auth             | Body                                       | Notes                                                                                                                                                                                                                                            |
 | ------ | -------------------------- | ---------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `GET`  | `/email/api/health`        | none             | —                                          | Liveness; empty `200`.                                                                                                                                                                                                                           |
-| `POST` | `/email/api/send-email`    | `X-API-AUTH-KEY` | `{ to, subject, content }`                 | Sends `content` directly as HTML.                                                                                                                                                                                                                |
-| `POST` | `/email/api/send-otp`      | `X-API-AUTH-KEY` | `{ to, otp }`                              | Renders the `otp-verification` D1 template with `{ code: otp }`. `404` if the template is missing.                                                                                                                                               |
-| `POST` | `/email/api/send-template` | `X-API-AUTH-KEY` | `{ to, template, subject?, replacements }` | Renders the named D1 template (by `slug`), substituting `{{key}}` tokens in subject and content from `replacements` (optional, defaults to `{}`). Optional `subject` overrides the template's default subject. `404` if the template is missing. |
+| `GET`  | `/api/health`              | none             | —                                          | Liveness; empty `200`.                                                                                                                                                                                                                           |
+| `POST` | `/api/send-email`          | `X-API-AUTH-KEY` | `{ to, subject, content }`                 | Sends `content` directly as HTML.                                                                                                                                                                                                                |
+| `POST` | `/api/send-otp`            | `X-API-AUTH-KEY` | `{ to, otp }`                              | Renders the `otp-verification` D1 template with `{ code: otp }`. `404` if the template is missing.                                                                                                                                               |
+| `POST` | `/api/send-template`       | `X-API-AUTH-KEY` | `{ to, template, subject?, replacements }` | Renders the named D1 template (by `slug`), substituting `{{key}}` tokens in subject and content from `replacements` (optional, defaults to `{}`). Optional `subject` overrides the template's default subject. `404` if the template is missing. |
 
 Invalid bodies return `400`; payloads over 50KB return `413`.
 
@@ -147,7 +147,7 @@ scripts/seed-email-vendors.sql  table DDL + seed rows
 
 ## Admin UI
 
-An admin interface is bundled at `/email/admin/*`. It allows managing email vendors and templates, and sending test emails.
+An admin interface is bundled at `/admin/*`. It allows managing email vendors and templates, and sending test emails.
 
 ### Development
 
@@ -156,7 +156,7 @@ An admin interface is bundled at `/email/admin/*`. It allows managing email vend
 npm run dev
 
 # Terminal 2: Admin SPA
-cd admin && npm run dev    # Vite on :5173, proxies /email/api to :8787
+cd admin && npm run dev    # Vite on :5173, proxies /api to :8787
 ```
 
 ### Production build

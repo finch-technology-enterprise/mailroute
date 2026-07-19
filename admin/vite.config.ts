@@ -4,14 +4,14 @@ import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  base: "/email/admin/",
+  base: "/admin/",
   build: {
     outDir: "dist",
     emptyOutDir: true,
   },
   server: {
     proxy: {
-      "/email/api": {
+      "/api": {
         target: "http://localhost:8787",
         changeOrigin: true,
       },

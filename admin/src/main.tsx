@@ -6,7 +6,7 @@ import "./index.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <BrowserRouter basename="/email/admin">
+    <BrowserRouter basename="/admin">
       <App />
     </BrowserRouter>
   </StrictMode>,
