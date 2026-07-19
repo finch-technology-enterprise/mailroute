@@ -469,13 +469,19 @@ textarea.apple-input {
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 40;
+  z-index: 30;
   background: var(--bg-sidebar);
   backdrop-filter: blur(40px) saturate(180%);
   -webkit-backdrop-filter: blur(40px) saturate(180%);
   border-top: 1px solid var(--border);
   padding-bottom: var(--sab);
   display: none;
+  /* Prevent nav from capturing touches when modal is open */
+  pointer-events: auto;
+}
+
+body:has(.modal-overlay) .bottom-nav {
+  pointer-events: none;
 }
 
 .bottom-nav-inner {
@@ -506,6 +512,18 @@ textarea.apple-input {
   color: var(--accent);
 }
 
+.bottom-nav-item.active::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 3px;
+  border-radius: 1.5px;
+  background: var(--accent);
+}
+
 .bottom-nav-icon {
   display: flex;
   align-items: center;
@@ -521,9 +539,32 @@ textarea.apple-input {
   .card { border-radius: var(--radius-lg); }
   h1 { font-size: 24px; }
   h2 { font-size: 20px; }
-  .modal-surface { max-width: calc(100vw - 32px); margin: 0 16px; max-height: 85vh; padding: 24px; }
+
+  /* Table horizontal scroll */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -16px; padding: 0 16px; }
+  .apple-table { min-width: 520px; }
+
+  /* Modal bottom sheet */
   .modal-overlay { align-items: flex-end; padding-bottom: 0; }
-  .modal-surface { border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin: 0; max-width: 100%; }
+  .modal-surface {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    margin: 0;
+    max-width: 100%;
+    max-height: 85vh;
+    padding: 24px;
+    padding-top: 16px;
+  }
+  /* Drag handle for bottom sheet modal */
+  .modal-surface::before {
+    content: '';
+    display: block;
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border-hover);
+    margin: 0 auto 20px;
+  }
   .apple-table th, .apple-table td { padding: 12px; }
 }
 

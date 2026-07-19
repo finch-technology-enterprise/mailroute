@@ -57,31 +57,33 @@ export default function Table<T>({ columns, data, keyExtractor, isLoading }: Tab
   }
 
   return (
-    <div className="card overflow-hidden">
-      <table className="apple-table">
-        <thead>
-          <tr>
-            {columns.map((col) => (
-              <th key={col.key} className={col.className}>{col.header}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((row, i) => (
-            <motion.tr
-              key={keyExtractor(row)}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ type: "spring", bounce: 0, duration: 0.25, delay: i * 0.03 }}
-              style={{ background: "transparent" }}
-            >
+    <div className="card">
+      <div className="table-wrap">
+        <table className="apple-table">
+          <thead>
+            <tr>
               {columns.map((col) => (
-                <td key={col.key} className={col.className}>{col.render(row)}</td>
+                <th key={col.key} className={col.className}>{col.header}</th>
               ))}
-            </motion.tr>
-          ))}
-        </tbody>
-      </table>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((row, i) => (
+              <motion.tr
+                key={keyExtractor(row)}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: "spring", bounce: 0, duration: 0.25, delay: i * 0.03 }}
+                style={{ background: "transparent" }}
+              >
+                {columns.map((col) => (
+                  <td key={col.key} className={col.className}>{col.render(row)}</td>
+                ))}
+              </motion.tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

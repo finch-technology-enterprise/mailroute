@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { hasAuthKey, clearAuthKey } from "../api/client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 
 const navItems = [
@@ -193,9 +193,7 @@ function BottomNav() {
 }
 
 export default function Layout() {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => { setMounted(true); }, []);
+  const location = useLocation();
 
   if (!hasAuthKey()) return <AuthScreen />;
 
@@ -208,17 +206,15 @@ export default function Layout() {
 
       <main className="flex-1" style={{ marginLeft: "var(--sidebar-width)", padding: "40px 36px", paddingBottom: 40 }}>
         <AnimatePresence mode="wait">
-          {mounted && (
-            <motion.div
-              key="content"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-            >
-              <Outlet />
-            </motion.div>
-          )}
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ type: "spring", bounce: 0, duration: 0.25 }}
+          >
+            <Outlet />
+          </motion.div>
         </AnimatePresence>
       </main>
 
