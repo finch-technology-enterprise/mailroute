@@ -21,6 +21,7 @@ export default function Config() {
   const [revealed, setRevealed] = useState<Set<string>>(new Set());
   const [revealing, setRevealing] = useState<Set<string>>(new Set());
   const [rotating, setRotating] = useState<Set<string>>(new Set());
+  const [hiddenValues, setHiddenValues] = useState<Record<string, string>>({});
   const { toast } = useToast();
 
   const fetch = useCallback(async () => {
@@ -65,7 +66,9 @@ export default function Config() {
     const id = `${service}:${key}`;
     setRevealing((prev) => new Set(prev).add(id));
     try {
+      const original = rows.find((r) => r.service === service && r.key === key)?.value;
       const res = await post<ApiResponse<{ value: string }>>(`/config/${encodeURIComponent(service)}/${encodeURIComponent(key)}/decrypt`, {});
+      setHiddenValues((prev) => ({ ...prev, [id]: original || "" }));
       setRevealed((prev) => new Set(prev).add(id));
       setRows((prev) => prev.map((r) => r.service === service && r.key === key ? { ...r, value: res.data?.value || r.value } : r));
     } catch (err) {
@@ -79,7 +82,9 @@ export default function Config() {
     const id = `${service}:${key}`;
     setRotating((prev) => new Set(prev).add(id));
     try {
+      const original = rows.find((r) => r.service === service && r.key === key)?.value;
       const res = await post<ApiResponse<{ value: string }>>(`/config/${encodeURIComponent(service)}/${encodeURIComponent(key)}/rotate`, {});
+      setHiddenValues((prev) => ({ ...prev, [id]: original || "" }));
       setRows((prev) => prev.map((r) => r.service === service && r.key === key ? { ...r, value: res.data?.value || r.value, encrypted: false } : r));
       setRevealed((prev) => new Set(prev).add(id));
       toast("Rotated — new value shown below. Copy it now.", "success");
@@ -150,7 +155,17 @@ export default function Config() {
                           <button className="apple-link" onClick={() => handleEncrypt(row.service, row.key)} disabled={revealing.has(id)}>Encrypt</button>
                         )}
                         {row.encrypted && (
-                          <button className="apple-link" onClick={() => isRevealed ? setRevealed((prev) => { const n = new Set(prev); n.delete(id); return n; }) : handleDecrypt(row.service, row.key)} disabled={revealing.has(id)}>
+                          <button className="apple-link" onClick={() => {
+                            if (isRevealed) {
+                              const masked = hiddenValues[id];
+                              if (masked) {
+                                setRows((prev) => prev.map((r) => r.service === row.service && r.key === row.key ? { ...r, value: masked } : r));
+                              }
+                              setRevealed((prev) => { const n = new Set(prev); n.delete(id); return n; });
+                            } else {
+                              handleDecrypt(row.service, row.key);
+                            }
+                          }} disabled={revealing.has(id)}>
                             {revealing.has(id) ? "..." : isRevealed ? "Hide" : "Reveal"}
                           </button>
                         )}
