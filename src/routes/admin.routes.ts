@@ -6,7 +6,7 @@ import { eq, asc } from "drizzle-orm";
 import { CloudflareBindings } from "../lib/cloudflare.binding";
 import { ApiResponse } from "../utils/response.util";
 import { ApiAuthKeyMiddleware } from "../middlewares/api-auth-key.middleware";
-import { EmailVendor, EmailTemplate } from "../db/schema";
+import { EmailVendor, EmailTemplate, ServiceConfig } from "../db/schema";
 import { EmailService } from "../services/email.service";
 
 type Bindings = { Bindings: CloudflareBindings };
@@ -137,6 +137,33 @@ admin.post("/test-send", zValidator("json", testSendSchema), async (c) => {
     const message = error instanceof Error ? error.message : String(error);
     return c.json(ApiResponse(false, message), 502);
   }
+});
+
+// --- Config ---
+
+admin.get("/config", async (c) => {
+  const db = drizzle(c.env.D1_DATABASE);
+  const rows = await db.select().from(ServiceConfig).all();
+  return c.json(ApiResponse(true, null, rows));
+});
+
+const configUpdateSchema = z.object({ value: z.string() });
+
+admin.put("/config/:service/:key", zValidator("json", configUpdateSchema), async (c) => {
+  const db = drizzle(c.env.D1_DATABASE);
+  const service = c.req.param("service");
+  const key = c.req.param("key");
+  const { value } = c.req.valid("json");
+  await db.update(ServiceConfig).set({ value }).where(
+    eq(ServiceConfig.service, service) && eq(ServiceConfig.key, key)
+  ).execute();
+  return c.json(ApiResponse(true, "Config updated"));
+});
+
+// --- Logs (stub — returns empty until send_logs table exists) ---
+
+admin.get("/logs", async (c) => {
+  return c.json(ApiResponse(true, null, []));
 });
 
 export default admin;

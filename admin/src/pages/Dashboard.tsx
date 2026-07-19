@@ -56,28 +56,12 @@ export default function Dashboard() {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          <StatCard
-            label="Vendors"
-            value={String(stats?.vendorCount ?? 0)}
-            actionLabel="Manage vendors"
-            onClick={() => navigate("/vendors")}
-            index={0}
-          />
-          <StatCard
-            label="Templates"
-            value={String(stats?.templateCount ?? 0)}
-            actionLabel="Manage templates"
-            onClick={() => navigate("/templates")}
-            index={1}
-          />
-          <StatCard
-            label="Quick Test"
-            value=""
-            actionLabel="Send test"
-            onClick={() => navigate("/test-send")}
-            index={2}
-          />
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-3 lg:grid-cols-5">
+          <StatCard label="Vendors" value={String(stats?.vendorCount ?? 0)} actionLabel="Manage" onClick={() => navigate("/vendors")} index={0} />
+          <StatCard label="Templates" value={String(stats?.templateCount ?? 0)} actionLabel="Manage" onClick={() => navigate("/templates")} index={1} />
+          <StatCard label="Test Send" value="" actionLabel="Send test" onClick={() => navigate("/test-send")} index={2} />
+          <StatCard label="Activity" value="" actionLabel="View log" onClick={() => navigate("/activity")} index={3} />
+          <StatCard label="Config" value="" actionLabel="Settings" onClick={() => navigate("/config")} index={4} />
         </div>
       )}
     </motion.div>

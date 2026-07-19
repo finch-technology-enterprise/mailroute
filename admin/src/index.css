@@ -39,7 +39,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg-primary: #1c1c1e;
     --bg-secondary: #2c2c2e;
     --bg-tertiary: rgba(44, 44, 46, 0.8);
@@ -59,6 +59,27 @@
     --red-bg: rgba(255, 69, 58, 0.15);
     --green-bg: rgba(48, 209, 88, 0.15);
   }
+}
+
+[data-theme="dark"] {
+  --bg-primary: #1c1c1e;
+  --bg-secondary: #2c2c2e;
+  --bg-tertiary: rgba(44, 44, 46, 0.8);
+  --bg-sidebar: rgba(44, 44, 46, 0.65);
+  --text-primary: #f5f5f7;
+  --text-secondary: #a1a1a6;
+  --text-tertiary: #8e8e93;
+  --accent: #0a84ff;
+  --accent-hover: #409cff;
+  --accent-active: #0066d9;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-hover: rgba(255, 255, 255, 0.12);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.35);
+  --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.4);
+  --red-bg: rgba(255, 69, 58, 0.15);
+  --green-bg: rgba(48, 209, 88, 0.15);
 }
 
 @media (prefers-reduced-motion: reduce) {

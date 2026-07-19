@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { hasAuthKey, clearAuthKey } from "../api/client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 
 const navItems = [
@@ -8,6 +8,7 @@ const navItems = [
   { to: "/vendors", label: "Vendors", icon: "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2'/><circle cx='9' cy='7' r='4'/><path d='M23 21v-2a4 4 0 0 0-3-3.87'/><path d='M16 3.13a4 4 0 0 1 0 7.75'/></svg>" },
   { to: "/templates", label: "Templates", icon: "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/><line x1='16' y1='13' x2='8' y2='13'/><line x1='16' y1='17' x2='8' y2='17'/></svg>" },
   { to: "/test-send", label: "Test Send", icon: "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M22 2L11 13'/><path d='M22 2L15 22l-4-9-9-4z'/></svg>" },
+  { to: "/activity", label: "Activity", icon: "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='22 12 18 12 15 21 9 3 6 12 2 12'/></svg>" },
 ];
 
 function AuthScreen() {
@@ -63,6 +64,14 @@ function AuthScreen() {
 
 function SettingsPopover({ onClose }: { onClose: () => void }) {
   const [keyValue, setKeyValue] = useState("");
+  const [dark, setDark] = useState(() => document.documentElement.getAttribute("data-theme") === "dark");
+
+  const toggleDark = () => {
+    const next = !dark;
+    setDark(next);
+    document.documentElement.setAttribute("data-theme", next ? "dark" : "light");
+    localStorage.setItem("mailroute-theme", next ? "dark" : "light");
+  };
 
   const handleSave = () => {
     if (keyValue) {
@@ -77,9 +86,18 @@ function SettingsPopover({ onClose }: { onClose: () => void }) {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -4, scale: 0.96 }}
       transition={{ type: "spring", bounce: 0, duration: 0.25 }}
-      className="card p-4 mb-2"
+      className="card p-4"
       style={{ position: "absolute", bottom: "100%", left: 0, right: 0, marginBottom: 8 }}
     >
+      <motion.button
+        className="w-full flex items-center gap-3 rounded-lg transition-colors mb-3"
+        style={{ fontSize: 13, fontWeight: 500, color: "var(--text-primary)", padding: "8px 12px", background: "transparent", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", cursor: "pointer" }}
+        onClick={toggleDark}
+        whileTap={{ scale: 0.97 }}
+      >
+        <span style={{ fontSize: 16 }}>{dark ? "☀️" : "🌙"}</span>
+        {dark ? "Light Mode" : "Dark Mode"}
+      </motion.button>
       <input
         type="password"
         className="apple-input mb-2"
@@ -175,7 +193,7 @@ function BottomNav() {
   return (
     <nav className="bottom-nav">
       <div className="bottom-nav-inner">
-        {navItems.map((item) => {
+        {navItems.slice(0, 5).map((item) => {
           const isActive = activeTo === item.to || (item.to !== "/" && activeTo.startsWith(item.to));
           return (
             <button
@@ -207,6 +225,23 @@ function BottomNav() {
 
 export default function Layout() {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const saved = localStorage.getItem("mailroute-theme");
+    if (saved) document.documentElement.setAttribute("data-theme", saved);
+
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === "n") navigate("/vendors");
+      if (e.key === "t") navigate("/templates");
+      if (e.key === "s") navigate("/test-send");
+      if (e.key === "d") navigate("/");
+      if (e.key === "a") navigate("/activity");
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [navigate]);
 
   if (!hasAuthKey()) return <AuthScreen />;
 
