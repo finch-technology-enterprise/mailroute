@@ -6,8 +6,8 @@ import { eq, asc } from "drizzle-orm";
 import { CloudflareBindings } from "../lib/cloudflare.binding";
 import { ApiResponse } from "../utils/response.util";
 import { ApiAuthKeyMiddleware } from "../middlewares/api-auth-key.middleware";
-import { EmailVendor, EmailTemplate, ServiceConfig } from "../db/schema";
-import { EmailService, EmailPayload } from "../services/email.service";
+import { EmailVendor, EmailTemplate } from "../db/schema";
+import { EmailService } from "../services/email.service";
 
 type Bindings = { Bindings: CloudflareBindings };
 const admin = new Hono<Bindings>();
