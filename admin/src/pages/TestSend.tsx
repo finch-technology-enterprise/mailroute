@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { motion } from "motion/react";
+import { useToast } from "../components/Toast";
+import RichEditor from "../components/RichEditor";
 import { sendTestEmail } from "../api/admin";
 
 export default function TestSend() {
@@ -65,14 +67,7 @@ export default function TestSend() {
 
           <div>
             <label className="apple-label">Content (HTML)</label>
-            <textarea
-              className="apple-input code"
-              rows={10}
-              placeholder="<h1>Hello!</h1>"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              required
-            />
+            <RichEditor content={content} onChange={setContent} minHeight={280} />
           </div>
 
           {error && <div className="apple-error">{error}</div>}
