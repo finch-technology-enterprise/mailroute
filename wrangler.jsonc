@@ -9,8 +9,16 @@
     {
       "pattern": "mailroute.example.com/email/api/*",
       "zone_name": "example.com"
+    },
+    {
+      "pattern": "mailroute.example.com/email/admin/*",
+      "zone_name": "example.com"
     }
   ],
+  "assets": {
+    "directory": "admin/dist",
+    "binding": "ADMIN_ASSETS"
+  },
   "d1_databases": [
     {
       "binding": "D1_DATABASE",

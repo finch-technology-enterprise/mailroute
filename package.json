@@ -7,11 +7,13 @@
   },
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy --minify",
+    "deploy": "npm run build:admin && wrangler deploy --minify",
     "deploy-secret": "./scripts/deploy-secrets.sh",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
     "build": "tsc --noEmit",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "dev:admin": "cd admin && npm run dev",
+    "build:admin": "cd admin && npm run build"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.8.0",
