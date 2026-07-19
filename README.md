@@ -145,6 +145,29 @@ src/
 scripts/seed-email-vendors.sql  table DDL + seed rows
 ```
 
+## Admin UI
+
+An admin interface is bundled at `/email/admin/*`. It allows managing email vendors and templates, and sending test emails.
+
+### Development
+
+```sh
+# Terminal 1: Worker
+npm run dev
+
+# Terminal 2: Admin SPA
+cd admin && npm run dev    # Vite on :5173, proxies /email/api to :8787
+```
+
+### Production build
+
+```sh
+npm run build:admin        # build the SPA to admin/dist/
+npm run deploy             # deploy Worker + SPA
+```
+
+The SPA is served by the Worker via the `ADMIN_ASSETS` binding. The first time you visit the admin UI, you'll be prompted for the `API_AUTH_KEY` — it is stored in `localStorage` and sent as the `X-API-AUTH-KEY` header.
+
 ## License
 
 MIT

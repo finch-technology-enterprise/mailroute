@@ -1,14 +1,9 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./components/Layout";
+import DashboardPage from "./pages/Dashboard";
 import VendorsPage from "./pages/Vendors";
 import TemplatesPage from "./pages/Templates";
-
-function DashboardPage() {
-  return <div className="rounded-lg bg-white p-6 shadow"><p className="text-gray-500">Dashboard coming in Task 5</p></div>;
-}
-function TestSendPage() {
-  return <div className="rounded-lg bg-white p-6 shadow"><p className="text-gray-500">Test Send coming in Task 5</p></div>;
-}
+import TestSendPage from "./pages/TestSend";
 
 export default function App() {
   return (
