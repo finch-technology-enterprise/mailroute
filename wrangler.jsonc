@@ -19,7 +19,7 @@
   "d1_databases": [
     {
       "binding": "D1_DATABASE",
-      "database_id": "<D1_DATABASE_ID>"
+      "database_id": "2a25996b-5ffc-4ee3-b03c-8d72adbad1e1"
     }
   ],
   // Per-IP+route rate limiting for the send endpoints. Counters are per
