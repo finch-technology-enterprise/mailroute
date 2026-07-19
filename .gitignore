@@ -40,3 +40,6 @@ lerna-debug.log*
 .DS_Store
 .vars
 .codegraph
+
+# Playwright / browser testing artifacts
+.playwright-mcp/
