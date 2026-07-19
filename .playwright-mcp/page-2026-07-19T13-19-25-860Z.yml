@@ -1,0 +1,5 @@
+- generic [ref=f1e4]:
+  - heading "mailroute Admin" [level=1] [ref=f1e5]
+  - paragraph [ref=f1e6]: Enter your API auth key to continue.
+  - textbox "API_AUTH_KEY" [ref=f1e7]: test-api-key-123
+  - button "Connect" [ref=f1e8]

@@ -1,0 +1,29 @@
+- generic [ref=f4e3]:
+  - navigation [ref=f4e4]:
+    - heading "mailroute" [level=1] [ref=f4e5]
+    - generic [ref=f4e6]:
+      - link "Dashboard" [ref=f4e7] [cursor=pointer]:
+        - /url: /email/admin
+      - link "Vendors" [ref=f4e8] [cursor=pointer]:
+        - /url: /email/admin/vendors
+      - link "Templates" [ref=f4e9] [cursor=pointer]:
+        - /url: /email/admin/templates
+      - link "Test Send" [ref=f4e10] [cursor=pointer]:
+        - /url: /email/admin/test-send
+    - button "Settings" [ref=f4e12]
+  - main [ref=f4e13]:
+    - generic [ref=f4e14]:
+      - heading "Dashboard" [level=1] [ref=f4e15]
+      - generic [ref=f4e16]:
+        - generic [ref=f4e20]:
+          - paragraph [ref=f4e21]: Vendors
+          - paragraph [ref=f4e22]: "2"
+          - button "Manage vendors →" [ref=f4e23]
+        - generic [ref=f4e24]:
+          - paragraph [ref=f4e25]: Templates
+          - paragraph [ref=f4e26]: "2"
+          - button "Manage templates →" [ref=f4e27]
+        - generic [ref=f4e28]:
+          - paragraph [ref=f4e29]: Quick Test
+          - paragraph [ref=f4e30]: Send a test email to verify your configuration.
+          - button "Send test →" [ref=f4e31]

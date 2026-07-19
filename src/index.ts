@@ -16,16 +16,11 @@ import adminRoutes from "./routes/admin.routes";
 const MAX_BODY_SIZE_KB = 50;
 const MAX_BODY_SIZE = 1024 * MAX_BODY_SIZE_KB;
 
-const app = new Hono<{ Bindings: CloudflareBindings }>().basePath("/email/api");
+// API app scoped to /email/api
+const api = new Hono<{ Bindings: CloudflareBindings }>().basePath("/email/api");
 
-/**
- * Global Middlewares
- */
-app.use(
+api.use(
   "*",
-  // Order matters: assign a request id and enforce the body-size limit
-  // BEFORE the logger reads/clones the body, so oversized payloads are
-  // rejected without being parsed and every log line has a request id.
   requestId(),
   secureHeaders(),
   bodyLimit({
@@ -37,29 +32,25 @@ app.use(
   LoggerMiddleware,
 );
 
-/**
- * Error Handler
- */
-app.onError(ErrorHandler);
+api.onError(ErrorHandler);
 
-/**
- *  Public Routes
- */
-app.route("/", generalRoutes);
+api.route("/", generalRoutes);
+api.route("/admin", adminRoutes);
 
-/**
- *  Admin Routes (auth via X-API-AUTH-KEY)
- */
-app.route("/admin", adminRoutes);
+// Main app — mounts the API and serves the SPA at /email/admin/*
+const app = new Hono<{ Bindings: CloudflareBindings }>();
+app.route("/", api);
 
-/**
- *  SPA Serving — catch-all for /email/admin/* client-side routing
- */
-app.get("/admin/:path*", async (c) => {
-  const path = c.req.param("path") || "index.html";
-  const res = await c.env.ADMIN_ASSETS.fetch(new URL(path, "http://localhost"));
+app.get("/email/admin*", async (c) => {
+  const url = new URL(c.req.url);
+  let path = url.pathname.replace("/email/admin", "") || "/";
+  path = path === "/" ? "/index.html" : path;
+  const reqUrl = new URL(path, "http://assets");
+  const res = await c.env.ADMIN_ASSETS.fetch(reqUrl);
   if (res.status === 200) return res;
-  return c.env.ADMIN_ASSETS.fetch(new URL("index.html", "http://localhost"));
+  const fallback = await c.env.ADMIN_ASSETS.fetch(new URL("/index.html", "http://assets"));
+  if (fallback.status === 200) return fallback;
+  return c.text("Not found", 404);
 });
 
 export default {
