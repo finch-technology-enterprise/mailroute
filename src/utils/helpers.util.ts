@@ -3,25 +3,6 @@ import { Context } from "hono";
 import { ConfigService } from "../services/config.service";
 
 /**
- * Replicates PHP's uniqid() functionality
- */
-export function uniqid(
-  prefix: string = "",
-  moreEntropy: boolean = false,
-): string {
-  const now = Date.now();
-  const seconds = Math.floor(now / 1000).toString(16);
-  const microseconds = Math.floor((now % 1000) * 1000)
-    .toString(16)
-    .padStart(5, "0");
-  let id = prefix + seconds + microseconds;
-  if (moreEntropy) {
-    id += "." + Math.random().toFixed(8).substring(2);
-  }
-  return id;
-}
-
-/**
  * Utility to flatten nested objects into "dot" notation like Laravel's Arr::dot()
  */
 export function flattenObject(obj: any, prefix = ""): Record<string, any> {
@@ -108,8 +89,11 @@ export const weeksToSeconds = (weeks: number) => weeks * 7 * 24 * 60 * 60;
 
 export function date(
   formatStr: string = "Y-m-d H:i:s",
-  timeZone: string = "Asia/Kuala_Lumpur",
+  timeZone?: string,
 ): string {
+  timeZone ??=
+    (globalThis as unknown as Record<string, string | undefined>).TIMEZONE ||
+    "Asia/Kuala_Lumpur";
   const now = new Date();
 
   const formatter = new Intl.DateTimeFormat("en-GB", {

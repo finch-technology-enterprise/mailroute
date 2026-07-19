@@ -12,6 +12,9 @@ import { ErrorHandler } from "./middlewares/error.middleware";
 // Routes
 import generalRoutes from "./routes/general.routes";
 
+const MAX_BODY_SIZE_KB = 50;
+const MAX_BODY_SIZE = 1024 * MAX_BODY_SIZE_KB;
+
 const app = new Hono<{ Bindings: CloudflareBindings }>().basePath("/email/api");
 
 /**
@@ -25,7 +28,7 @@ app.use(
   requestId(),
   secureHeaders(),
   bodyLimit({
-    maxSize: 1024 * 50, // 50KB
+    maxSize: MAX_BODY_SIZE,
     onError: (c) => {
       return c.text("overflow :(", 413);
     },

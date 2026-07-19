@@ -26,10 +26,12 @@ Invalid bodies return `400`; payloads over 50KB return `413`.
 ## Development
 
 ```sh
+cp .env.example .dev.vars     # create your local env file
+# Edit .dev.vars with your real credentials
 npm install
-npm run dev      # local Worker via Wrangler (uses .dev.vars / .env)
-npm run build    # type-check only (tsc --noEmit) — the project's verification gate
-npm run format   # Prettier
+npm run dev                   # local Worker via Wrangler
+npm run build                 # type-check only (tsc --noEmit) — the project's verification gate
+npm run format                # Prettier
 ```
 
 There is no test runner configured; `npm run build` is the correctness gate.
@@ -37,8 +39,14 @@ There is no test runner configured; `npm run build` is the correctness gate.
 ## Deployment
 
 ```sh
-npm run deploy          # deploy to Cloudflare
-npm run deploy-secret   # deploy and push secrets from .env
+npm run deploy                # deploy Worker to Cloudflare
+npm run deploy-secret         # push secrets from .env to Cloudflare
+```
+
+Alternatively, push secrets individually:
+
+```sh
+wrangler secret put API_AUTH_KEY
 ```
 
 Pass `CloudflareBindings` as generics when instantiating Hono:
@@ -52,15 +60,24 @@ Bindings are hand-maintained in `src/lib/cloudflare.binding.ts` (the source of t
 
 ## Configuration
 
+### Required environment variables
+
+| Variable                 | Description                                                                 |
+| ------------------------ | --------------------------------------------------------------------------- |
+| `API_AUTH_KEY`           | Secret shared with callers; sent as `X-API-AUTH-KEY` header                 |
+| `NEW_RELIC_LICENSE_KEY`  | New Relic license key for observability logging                             |
+| `NEW_RELIC_LOG_ENDPOINT` | New Relic Log API endpoint (default: `https://log-api.newrelic.com/log/v1`) |
+| `APP_ENVIRONMENT`        | `production`, `staging`, or `development`                                   |
+| `APP_URL`                | Public URL of the application                                               |
+| `TIMEZONE`               | Timezone for date formatting (default: `Asia/Kuala_Lumpur`)                 |
+
 ### Bindings & secrets
 
 - `D1_DATABASE` — D1 SQLite database (`email_templates` and `email_vendors` tables).
-- `RATE_LIMITER` — Cloudflare Rate Limiting binding.
-- Secrets in `env`: `API_AUTH_KEY`, `NEW_RELIC_LICENSE_KEY`, `NEW_RELIC_LOG_ENDPOINT`, `APP_ENVIRONMENT`, `APP_URL`. (The legacy `SENDER_API_ENDPOINT` / `SENDER_API_TOKEN` are deprecated — vendor credentials now live in the `email_vendors` table.)
+- `RATE_LIMITER` — Cloudflare Rate Limiting binding (20 requests per 60 seconds per IP+route).
+- Secrets in `env`: `API_AUTH_KEY`, `NEW_RELIC_LICENSE_KEY`, `NEW_RELIC_LOG_ENDPOINT`, `APP_ENVIRONMENT`, `APP_URL`, `TIMEZONE`. (The legacy `SENDER_API_ENDPOINT` / `SENDER_API_TOKEN` are deprecated — vendor credentials now live in the `email_vendors` table.)
 
 Shared config is resolved at runtime from the central `service_config` D1 table via `ConfigService` (60s cache), with env-binding fallback.
-
-See `.env.example` for a complete list of required environment variables.
 
 ### Email vendors (`email_vendors` D1 table)
 
@@ -83,6 +100,16 @@ wrangler d1 execute <DB_NAME> --remote --file scripts/seed-email-vendors.sql
 ```
 
 Edits to `email_vendors` take effect within the 60s cache TTL — no redeploy.
+
+## Observability
+
+Logs are shipped to New Relic via the `NewRelicLogging` helper. The following request metadata is sent:
+
+- `context.ip` — the caller's Cloudflare edge IP (`cf-connecting-ip`)
+- `context.host`, `context.url`, `context.method`
+- `context.colo`, `context.country`, `context.region` — Cloudflare edge location
+
+Sensitive headers (`authorization`, `x-api-auth-key`, `cookie`) and body fields (`otp`, `password`, `token`, `secret`) are redacted as `[REDACTED]` before logging. Email HTML content is truncated to 256 characters.
 
 ## Adding things
 

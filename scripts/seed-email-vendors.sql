@@ -21,10 +21,10 @@ CREATE TABLE IF NOT EXISTS email_vendors (
 INSERT OR REPLACE INTO email_vendors
   (id, name, enabled, priority, api_endpoint, api_token, from_email, from_name, config, created_at, updated_at)
 VALUES
-  ('sender', 'sender', 1, 1, 'REPLACE_WITH_SENDER_API_ENDPOINT', 'REPLACE_WITH_SENDER_API_TOKEN', 'no-reply@example.com', 'Your Company', NULL, datetime('now'), datetime('now'));
+  ('sender', 'sender', 1, 1, 'REPLACE_WITH_SENDER_API_ENDPOINT', 'REPLACE_WITH_SENDER_API_TOKEN', 'placeholder@example.com', 'Your Name', NULL, datetime('now'), datetime('now'));
 
 -- Brevo: fallback, disabled until a real token is filled in. Endpoint is fixed.
 INSERT OR REPLACE INTO email_vendors
   (id, name, enabled, priority, api_endpoint, api_token, from_email, from_name, config, created_at, updated_at)
 VALUES
-  ('brevo', 'brevo', 0, 2, 'https://api.brevo.com/v3/smtp/email', 'REPLACE_WITH_BREVO_API_TOKEN', 'no-reply@example.com', 'Your Company', NULL, datetime('now'), datetime('now'));
+  ('brevo', 'brevo', 0, 2, 'https://api.brevo.com/v3/smtp/email', 'REPLACE_WITH_BREVO_API_TOKEN', 'placeholder@example.com', 'Your Name', NULL, datetime('now'), datetime('now'));

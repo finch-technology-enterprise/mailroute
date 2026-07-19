@@ -18,7 +18,17 @@ export interface CloudflareBindings {
   NEW_RELIC_LICENSE_KEY?: string;
   NEW_RELIC_LOG_ENDPOINT?: string;
 
+  TIMEZONE?: string;
+
+  /**
+   * @deprecated Vendor credentials now live in the email_vendors D1 table.
+   * These env bindings are read only as a fallback until the table is seeded.
+   */
   SENDER_API_ENDPOINT?: string;
+  /**
+   * @deprecated Vendor credentials now live in the email_vendors D1 table.
+   * These env bindings are read only as a fallback until the table is seeded.
+   */
   SENDER_API_TOKEN?: string;
 
   // True bindings — always present, required to bootstrap config itself.

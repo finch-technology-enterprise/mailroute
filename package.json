@@ -2,12 +2,15 @@
   "name": "mailroute",
   "license": "MIT",
   "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy --minify",
+    "deploy-secret": "./scripts/deploy-secrets.sh",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
     "build": "tsc --noEmit",
-    "update": "npx npm-check-updates -u && npm update",
     "format": "prettier --write ."
   },
   "dependencies": {
@@ -17,10 +20,10 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260627.1",
+    "@cloudflare/workers-types": "^5.20260719.1",
     "drizzle-kit": "^0.31.10",
-    "prettier": "^3.8.5",
-    "typescript": "^6.0.3",
-    "wrangler": "^4.105.0"
+    "prettier": "^3.9.5",
+    "typescript": "^7.0.2",
+    "wrangler": "^4.112.0"
   }
 }
