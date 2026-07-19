@@ -1,13 +1,13 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { hasAuthKey, clearAuthKey } from "../api/client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "motion/react";
 
 const navItems = [
-  { to: "/", label: "Dashboard" },
-  { to: "/vendors", label: "Vendors" },
-  { to: "/templates", label: "Templates" },
-  { to: "/test-send", label: "Test Send" },
+  { to: "/", label: "Dashboard", icon: "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='3' width='7' height='9'/><rect x='14' y='3' width='7' height='5'/><rect x='14' y='12' width='7' height='9'/><rect x='3' y='16' width='7' height='5'/></svg>" },
+  { to: "/vendors", label: "Vendors", icon: "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/><circle cx='12' cy='7' r='4'/></svg>" },
+  { to: "/templates", label: "Templates", icon: "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z'/><polyline points='14 2 14 8 20 8'/><line x1='16' y1='13' x2='8' y2='13'/><line x1='16' y1='17' x2='8' y2='17'/><polyline points='10 9 9 9 8 9'/></svg>" },
+  { to: "/test-send", label: "Test Send", icon: "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><polygon points='22 2 11 13'/><polygon points='22 2 15 22 11 13 2 9 22 2'/></svg>" },
 ];
 
 function AuthScreen() {
@@ -21,14 +21,20 @@ function AuthScreen() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center" style={{ background: "var(--bg-primary)" }}>
+    <div className="flex min-h-dvh items-center justify-center" style={{ background: "var(--bg-primary)", paddingTop: "var(--sat)", paddingBottom: "var(--sab)" }}>
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: "spring", bounce: 0, duration: 0.5 }}
         className="card p-10 w-full max-w-sm mx-4"
       >
-        <h1 className="mb-1 text-2xl" style={{ fontWeight: 700, letterSpacing: "-0.03em" }}>mailroute</h1>
+        <div style={{ width: 48, height: 48, borderRadius: 14, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="4" width="20" height="16" rx="2"/>
+            <polyline points="2,4 12,13 22,4"/>
+          </svg>
+        </div>
+        <h1 className="mb-1" style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.03em" }}>mailroute</h1>
         <p className="mb-8" style={{ color: "var(--text-secondary)", fontSize: 14 }}>Enter your API auth key to continue.</p>
         <div className="flex flex-col gap-3">
           <input
@@ -39,6 +45,7 @@ function AuthScreen() {
             onChange={(e) => setKeyValue(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
             autoFocus
+            autoComplete="off"
           />
           <motion.button
             className="apple-btn apple-btn-primary w-full justify-center"
@@ -76,17 +83,18 @@ function SettingsPopover({ onClose }: { onClose: () => void }) {
       <input
         type="password"
         className="apple-input mb-2"
-        style={{ fontSize: 13, padding: "8px 12px" }}
+        style={{ fontSize: 16, padding: "8px 12px" }}
         placeholder="New API key"
         value={keyValue}
         onChange={(e) => setKeyValue(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && handleSave()}
         autoFocus
+        autoComplete="off"
       />
       <div className="flex gap-2">
         <motion.button
           className="apple-btn apple-btn-primary"
-          style={{ fontSize: 12, padding: "6px 14px", flex: 1 }}
+          style={{ fontSize: 13, padding: "6px 14px", flex: 1, minHeight: 36 }}
           onClick={handleSave}
           whileTap={{ scale: 0.97 }}
         >
@@ -94,7 +102,7 @@ function SettingsPopover({ onClose }: { onClose: () => void }) {
         </motion.button>
         <motion.button
           className="apple-btn apple-btn-secondary"
-          style={{ fontSize: 12, padding: "6px 14px", flex: 1 }}
+          style={{ fontSize: 13, padding: "6px 14px", flex: 1, minHeight: 36 }}
           onClick={() => { clearAuthKey(); window.location.reload(); }}
           whileTap={{ scale: 0.97 }}
         >
@@ -105,62 +113,116 @@ function SettingsPopover({ onClose }: { onClose: () => void }) {
   );
 }
 
-export default function Layout() {
+function NavPills() {
   const [showSettings, setShowSettings] = useState(false);
 
-  if (!hasAuthKey()) return <AuthScreen />;
+  return (
+    <>
+      <div className="flex flex-col gap-1">
+        {navItems.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.to === "/"}
+            className="nav-item relative px-3 py-2.5 text-sm font-medium rounded-lg transition-colors"
+            style={{ color: "var(--text-secondary)", letterSpacing: "-0.01em" }}
+          >
+            {({ isActive }) => (
+              <>
+                {isActive && (
+                  <motion.span
+                    layoutId="nav-pill"
+                    className="absolute inset-0 rounded-lg"
+                    style={{ background: "rgba(0, 113, 227, 0.08)" }}
+                    transition={{ type: "spring", bounce: 0, duration: 0.35 }}
+                  />
+                )}
+                <span className="relative z-10 flex items-center gap-3" style={{ color: isActive ? "var(--accent)" : undefined, fontWeight: isActive ? 600 : 500 }}>
+                  <span style={{ width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }} dangerouslySetInnerHTML={{ __html: item.icon }} />
+                  {item.label}
+                </span>
+              </>
+            )}
+          </NavLink>
+        ))}
+      </div>
+
+      <div className="mt-auto pt-4 relative">
+        <motion.button
+          className="nav-item w-full flex items-center gap-3 text-sm rounded-lg transition-colors"
+          style={{ fontSize: 13, fontWeight: 500, color: "var(--text-tertiary)", padding: "10px 12px" }}
+          onClick={() => setShowSettings(!showSettings)}
+          whileTap={{ scale: 0.98 }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+          </svg>
+          Settings
+        </motion.button>
+        <AnimatePresence>
+          {showSettings && <SettingsPopover onClose={() => setShowSettings(false)} />}
+        </AnimatePresence>
+      </div>
+    </>
+  );
+}
+
+function BottomNav() {
+  const location = useLocation();
 
   return (
-    <div className="flex min-h-screen" style={{ background: "var(--bg-primary)" }}>
-      <nav className="glass-sidebar flex w-60 flex-col px-5 py-8 fixed h-screen z-10">
-        <h2 className="mb-10 px-2 text-xl" style={{ fontWeight: 700, letterSpacing: "-0.03em" }}>mailroute</h2>
-
-        <div className="flex flex-col gap-1">
-          {navItems.map((item) => (
+    <nav className="bottom-nav" style={{ zIndex: 50 }}>
+      <div className="bottom-nav-inner">
+        {navItems.map((item) => {
+          const isActive = item.to === "/" ? location.pathname === "/admin/" || location.pathname === "/admin" : location.pathname.startsWith(`/admin${item.to}`);
+          return (
             <NavLink
               key={item.to}
               to={item.to}
               end={item.to === "/"}
-              className="relative px-3 py-2.5 text-sm font-medium rounded-lg transition-colors"
-              style={{ color: "var(--text-secondary)", letterSpacing: "-0.01em" }}
+              className={`bottom-nav-item ${isActive ? "active" : ""}`}
             >
-              {({ isActive }) => (
-                <>
-                  {isActive && (
-                    <motion.span
-                      layoutId="nav-pill"
-                      className="absolute inset-0 rounded-lg"
-                      style={{ background: "rgba(0, 113, 227, 0.08)" }}
-                      transition={{ type: "spring", bounce: 0, duration: 0.35 }}
-                    />
-                  )}
-                  <span className="relative z-10" style={{ color: isActive ? "var(--accent)" : undefined, fontWeight: isActive ? 600 : 500 }}>
-                    {item.label}
-                  </span>
-                </>
-              )}
+              <span className="bottom-nav-icon" dangerouslySetInnerHTML={{ __html: item.icon }} />
+              <span>{item.label}</span>
             </NavLink>
-          ))}
-        </div>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
 
-        <div className="mt-auto pt-4 relative">
-          <motion.button
-            className="apple-btn-ghost w-full justify-start text-sm"
-            style={{ fontSize: 13, fontWeight: 500, color: "var(--text-tertiary)", padding: "8px 12px", borderRadius: "var(--radius-md)" }}
-            onClick={() => setShowSettings(!showSettings)}
-            whileTap={{ scale: 0.98 }}
-          >
-            Settings
-          </motion.button>
-          <AnimatePresence>
-            {showSettings && <SettingsPopover onClose={() => setShowSettings(false)} />}
-          </AnimatePresence>
-        </div>
+export default function Layout() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
+
+  if (!hasAuthKey()) return <AuthScreen />;
+
+  return (
+    <div className="flex min-h-dvh" style={{ background: "var(--bg-primary)", paddingTop: "var(--sat)" }}>
+      <nav className="sidebar-nav glass-sidebar flex-col px-5 py-8 fixed h-screen z-10" style={{ width: "var(--sidebar-width)" }}>
+        <h2 className="mb-10 px-3" style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-0.03em" }}>mailroute</h2>
+        <NavPills />
       </nav>
 
-      <main className="flex-1 ml-60 p-10">
-        <Outlet />
+      <main className="flex-1" style={{ marginLeft: "var(--sidebar-width)", padding: "40px 36px", paddingBottom: 40 }}>
+        <AnimatePresence mode="wait">
+          {mounted && (
+            <motion.div
+              key="content"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <Outlet />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
+
+      <BottomNav />
     </div>
   );
 }

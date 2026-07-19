@@ -1,0 +1,20 @@
+{
+  "name": "mailroute — Admin",
+  "short_name": "mailroute",
+  "description": "Multi-vendor email failover management",
+  "start_url": "/admin/",
+  "scope": "/admin/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#f5f5f7",
+  "background_color": "#f5f5f7",
+  "categories": ["business", "utilities", "communication"],
+  "icons": [
+    {
+      "src": "/admin/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
