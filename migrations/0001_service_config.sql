@@ -21,7 +21,7 @@ INSERT OR REPLACE INTO service_config (service, key, value, updated_at) VALUES
   ('*', 'APP_ENVIRONMENT',       'development',                         datetime('now')),
   ('*', 'NEW_RELIC_LICENSE_KEY', '<NEW_RELIC_LICENSE_KEY>',            datetime('now')),
   ('*', 'NEW_RELIC_LOG_ENDPOINT','https://log-api.newrelic.com/log/v1', datetime('now')),
-  ('*', 'SENDER_API_ENDPOINT',   'https://api.sender.example.com/v2/...', datetime('now'));
+  ('*', 'SENDER_API_ENDPOINT',   'https://api.sender.net/v2/...',      datetime('now'));
 
 -- Specific to this service:
 INSERT OR REPLACE INTO service_config (service, key, value, updated_at) VALUES
