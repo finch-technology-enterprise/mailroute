@@ -53,6 +53,12 @@ export default function VendorForm({ open, vendor, onSave, onClose }: VendorForm
     if (!vendor && !form.apiToken.trim()) { setError("API Token is required"); return; }
     if (!form.fromEmail.trim()) { setError("From Email is required"); return; }
 
+    if (vendor && !form.apiToken.trim()) {
+      const { apiToken, ...rest } = form;
+      await onSave(rest as VendorFormData);
+      return;
+    }
+
     setSaving(true);
     try {
       await onSave(form);

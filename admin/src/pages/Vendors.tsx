@@ -74,16 +74,14 @@ export default function Vendors() {
     setFormOpen(true);
   };
 
-  if (error && vendors.length === 0) {
-    return <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error} <button className="ml-2 underline" onClick={fetchVendors}>Retry</button></div>;
-  }
-
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Vendors</h1>
         <button className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700" onClick={openAdd}>Add Vendor</button>
       </div>
+
+      {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error} <button className="ml-2 underline" onClick={fetchVendors}>Retry</button></div>}
 
       {!loading && vendors.length === 0 ? (
         <EmptyState title="No vendors configured" description="Add your first email vendor to start sending emails through the failover chain." actionLabel="Add Vendor" onAction={openAdd} />
