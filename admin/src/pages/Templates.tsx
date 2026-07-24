@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion } from "motion/react";
 import { useToast } from "../components/Toast";
 import Table from "../components/Table";
@@ -43,12 +43,12 @@ export default function Templates() {
     fetchTemplates();
   }, [fetchTemplates]);
 
-  const filtered = templates.filter(
+  const filtered = useMemo(() => templates.filter(
     (t) =>
       !search ||
       t.slug.toLowerCase().includes(search.toLowerCase()) ||
       t.subject.toLowerCase().includes(search.toLowerCase()),
-  );
+  ), [templates, search]);
 
   const handleSave = async (data: TemplateFormData) => {
     if (editingTemplate) {
@@ -152,7 +152,7 @@ export default function Templates() {
       ) : (
         <Table
           className="table-as-cards"
-          columns={[
+          columns={useMemo(() => [
             {
               key: "slug",
               header: "Slug",
@@ -201,7 +201,7 @@ export default function Templates() {
                 </div>
               ),
             },
-          ]}
+          ], [])}
           data={filtered}
           keyExtractor={(t) => t.id}
           isLoading={loading}

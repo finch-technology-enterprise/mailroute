@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { motion } from "motion/react";
 import { authRequest } from "../api/client";
@@ -12,6 +12,11 @@ export default function ResetPassword() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const redirectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  useEffect(() => {
+    return () => { if (redirectTimer.current) clearTimeout(redirectTimer.current); };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,7 +26,7 @@ export default function ResetPassword() {
       const res = await authRequest<ApiResponse>("POST", "/reset-password", { token, password });
       if (res.success) {
         setDone(true);
-        setTimeout(() => navigate("/login"), 3000);
+        redirectTimer.current = setTimeout(() => navigate("/login"), 3000);
       } else {
         setError(res.message || "Reset failed");
       }

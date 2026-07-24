@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import { getStats } from "../api/admin";
@@ -71,6 +71,7 @@ export default function Dashboard() {
   const [recentLogs, setRecentLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const nav = useCallback((to: string) => () => navigate(to), [navigate]);
 
   useEffect(() => {
     Promise.all([
@@ -114,11 +115,11 @@ export default function Dashboard() {
       ) : (
         <div className="flex flex-col gap-6">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            <StatCard label="Vendors" value={String(stats?.vendorCount ?? 0)} actionLabel="Manage" onClick={() => navigate("/vendors")} />
-            <StatCard label="Templates" value={String(stats?.templateCount ?? 0)} actionLabel="Manage" onClick={() => navigate("/templates")} />
-            <StatCard label="Test Send" value="" actionLabel="Send test" onClick={() => navigate("/test-send")} />
-            <StatCard label="Activity" value="" actionLabel="View log" onClick={() => navigate("/activity")} />
-            <StatCard label="Settings" value="" actionLabel="Settings" onClick={() => navigate("/settings")} />
+            <StatCard label="Vendors" value={String(stats?.vendorCount ?? 0)} actionLabel="Manage" onClick={nav("/vendors")} />
+            <StatCard label="Templates" value={String(stats?.templateCount ?? 0)} actionLabel="Manage" onClick={nav("/templates")} />
+            <StatCard label="Test Send" value="" actionLabel="Send test" onClick={nav("/test-send")} />
+            <StatCard label="Activity" value="" actionLabel="View log" onClick={nav("/activity")} />
+            <StatCard label="Settings" value="" actionLabel="Settings" onClick={nav("/settings")} />
           </div>
 
           {recentLogs.length > 0 && (

@@ -134,23 +134,22 @@ export default function TestSend() {
     setContent(t.content);
   }, [templates]);
 
-  useEffect(() => {
-    if (!selectedSlug) return;
-    const t = templates.find((tmpl) => tmpl.slug === selectedSlug);
-    if (!t) return;
-    setSubject(replacePlaceholders(t.subject, replacements));
-    setContent(replacePlaceholders(t.content, replacements));
-  }, [replacements, selectedSlug, templates]);
-
-  const handleTemplateSelect = (slug: string) => {
+  const handleTemplateSelect = useCallback((slug: string) => {
     setSelectedSlug(slug);
     if (slug) loadTemplate(slug);
     else setReplacements({});
-  };
+  }, [loadTemplate]);
 
-  const handleReplacementChange = (key: string, value: string) => {
-    setReplacements((prev) => ({ ...prev, [key]: value }));
-  };
+  const handleReplacementChange = useCallback((key: string, value: string) => {
+    setReplacements((prev) => {
+      const next = { ...prev, [key]: value };
+      if (currentTemplate) {
+        setSubject(replacePlaceholders(currentTemplate.subject, next));
+        setContent(replacePlaceholders(currentTemplate.content, next));
+      }
+      return next;
+    });
+  }, [currentTemplate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

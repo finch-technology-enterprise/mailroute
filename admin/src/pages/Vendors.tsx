@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { motion } from "motion/react";
 import { useToast } from "../components/Toast";
 import Table from "../components/Table";
@@ -39,21 +39,21 @@ export default function Vendors() {
 
   useEffect(() => { fetchVendors(); }, [fetchVendors]);
 
-  const filtered = vendors.filter(
+  const filtered = useMemo(() => vendors.filter(
     (v) =>
       !search ||
       v.name.toLowerCase().includes(search.toLowerCase()) ||
       v.fromEmail.toLowerCase().includes(search.toLowerCase()),
-  );
+  ), [vendors, search]);
 
-  const handleToggle = async (vendor: Vendor) => {
+  const handleToggle = useCallback(async (vendor: Vendor) => {
     try {
       await updateVendor(vendor.id, { enabled: !vendor.enabled });
       setVendors((prev) => prev.map((v) => (v.id === vendor.id ? { ...v, enabled: !v.enabled } : v)));
     } catch (err) {
       toast(err instanceof Error ? err.message : "Failed to toggle", "error");
     }
-  };
+  }, []);
 
   const handleSave = async (data: VendorFormData) => {
     if (editingVendor) {
@@ -139,7 +139,7 @@ export default function Vendors() {
     touchItemIndex.current = null;
   };
 
-  const dragColumns = [
+  const dragColumns = useMemo(() => [
     {
       key: "drag",
       header: "",
@@ -180,7 +180,7 @@ export default function Vendors() {
         </div>
       ),
     },
-  ];
+  ], [handleToggle]);
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ type: "spring", bounce: 0, duration: 0.35 }}>
@@ -238,7 +238,7 @@ export default function Vendors() {
             data={filtered}
             keyExtractor={(v) => v.id}
             isLoading={false}
-            rowProps={(v, i) => ({
+            rowProps={useCallback((v: Vendor, i: number) => ({
               draggable: true,
               onDragStart: () => handleDragStart(i),
               onDragOver: () => handleDragOver(i),
@@ -251,7 +251,7 @@ export default function Vendors() {
                 opacity: dragItem.current === i ? 0.5 : 1,
                 borderTop: dragOverItem.current === i && dragItem.current !== i ? "2px solid var(--accent)" : undefined,
               },
-            })}
+            }), [])}
           />
         </div>
       )}
