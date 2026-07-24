@@ -12,6 +12,7 @@ import { ErrorHandler } from "./middlewares/error.middleware";
 // Routes
 import generalRoutes from "./routes/general.routes";
 import adminRoutes from "./routes/admin.routes";
+import authRoutes from "./routes/auth.routes";
 
 const MAX_BODY_SIZE_KB = 50;
 const MAX_BODY_SIZE = 1024 * MAX_BODY_SIZE_KB;
@@ -47,6 +48,7 @@ api.use(
 api.onError(ErrorHandler);
 
 api.route("/", generalRoutes);
+api.route("/auth", authRoutes);
 api.route("/admin", adminRoutes);
 
 // Main app — mounts the API and serves the SPA at /admin/*

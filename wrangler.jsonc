@@ -30,6 +30,9 @@
   "build": {
     "command": "npm run build:admin && npm run build"
   },
+  "vars": {
+    "JWT_SECRET": ""
+  },
   "observability": {
     "enabled": false,
     "head_sampling_rate": 1,

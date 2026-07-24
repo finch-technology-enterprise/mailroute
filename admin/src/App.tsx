@@ -10,6 +10,8 @@ const TemplatesPage = lazy(() => import("./pages/Templates"));
 const TestSendPage = lazy(() => import("./pages/TestSend"));
 const ActivityLogPage = lazy(() => import("./pages/ActivityLog"));
 const ConfigPage = lazy(() => import("./pages/Config"));
+const LoginPage = lazy(() => import("./pages/Login"));
+const SignupPage = lazy(() => import("./pages/Signup"));
 
 export default function App() {
   return (
@@ -29,6 +31,8 @@ export default function App() {
           </div>
         }>
           <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
             <Route element={<Layout />}>
               <Route index element={<DashboardPage />} />
               <Route path="vendors" element={<VendorsPage />} />

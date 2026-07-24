@@ -27,4 +27,6 @@ export interface CloudflareBindings {
   RATE_LIMITER: RateLimit;
 
   ADMIN_ASSETS: Fetcher;
+
+  JWT_SECRET: string;
 }

@@ -1,15 +1,15 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { CloudflareBindings } from "../lib/cloudflare.binding";
 import { ApiResponse } from "../utils/response.util";
 import { EmailTemplateService } from "../services/email-template.service";
 import { EmailService, EmailPayload } from "../services/email.service";
 import { ApiAuthKeyMiddleware } from "../middlewares/api-auth-key.middleware";
 import { RateLimitMiddleware } from "../middlewares/rate-limit.middleware";
 import { LogToNewRelic } from "../utils/helpers.util";
+import type { AppEnv } from "../lib/app-env";
 
-const general = new Hono<{ Bindings: CloudflareBindings }>();
+const general = new Hono<AppEnv>();
 
 // Shared validator that keeps the project's ApiResponse envelope on failure.
 const jsonBody = <T extends z.ZodTypeAny>(schema: T) =>
@@ -111,7 +111,8 @@ general.post(
   async (c) => {
     const { to, otp } = c.req.valid("json");
 
-    const emailTemplateService = new EmailTemplateService(c.env);
+    const tenantId = c.get("tenantId");
+    const emailTemplateService = new EmailTemplateService(c.env, tenantId);
     const emailData = await emailTemplateService.getProcessedTemplate(
       "otp-verification",
       { code: otp },
@@ -121,7 +122,7 @@ general.post(
       return c.json(ApiResponse(false, "Template not found"), 404);
     }
 
-    const emailService = new EmailService(c.env);
+    const emailService = new EmailService(c.env, tenantId);
     sendInBackground(c, emailService, {
       to,
       subject: emailData.subject,
@@ -140,7 +141,8 @@ general.post(
   async (c) => {
     const { to, subject, content } = c.req.valid("json");
 
-    const emailService = new EmailService(c.env);
+    const tenantId = c.get("tenantId");
+    const emailService = new EmailService(c.env, tenantId);
     sendInBackground(c, emailService, { to, subject, content });
 
     return c.json(ApiResponse(true, "Email is being sent"), 200);
@@ -155,7 +157,8 @@ general.post(
   async (c) => {
     const { to, template, subject, replacements } = c.req.valid("json");
 
-    const emailTemplateService = new EmailTemplateService(c.env);
+    const tenantId = c.get("tenantId");
+    const emailTemplateService = new EmailTemplateService(c.env, tenantId);
     const emailData = await emailTemplateService.getProcessedTemplate(
       template,
       replacements,
@@ -165,7 +168,7 @@ general.post(
       return c.json(ApiResponse(false, "Template not found"), 404);
     }
 
-    const emailService = new EmailService(c.env);
+    const emailService = new EmailService(c.env, tenantId);
     sendInBackground(c, emailService, {
       to,
       subject: subject ?? emailData.subject,

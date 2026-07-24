@@ -25,6 +25,9 @@
       }
     }
   ],
+  "vars": {
+    "JWT_SECRET": "<YOUR_JWT_SECRET>"
+  },
   "build": {
     "command": "npm run build:admin && npm run build"
   },

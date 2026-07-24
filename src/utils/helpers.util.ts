@@ -1,6 +1,6 @@
 // src/utils/helpers.util.ts
 import { Context } from "hono";
-import { ConfigService } from "../services/config.service";
+import type { CloudflareBindings } from "../lib/cloudflare.binding";
 
 /**
  * Utility to flatten nested objects into "dot" notation like Laravel's Arr::dot()
@@ -27,8 +27,13 @@ export function flattenObject(
   }, {});
 }
 
+function env(c: Context): CloudflareBindings {
+  return c.env as unknown as CloudflareBindings;
+}
+
 /**
- * Helper for New Relic Logging via API
+ * Helper for New Relic Logging via API — reads config from env vars directly
+ * so it works for all tenants without D1 dependency.
  */
 export function LogToNewRelic(
   c: Context,
@@ -40,15 +45,11 @@ export function LogToNewRelic(
   c.executionCtx.waitUntil(
     (async () => {
       try {
-        // Resolved from central D1 config (with env fallback). Loaded inside
-        // waitUntil since config access is async; cached, so it's cheap.
-        const config = new ConfigService(c.env);
-        const [licenseKey, logEndpoint, appEnvironment] = await Promise.all([
-          config.get("NEW_RELIC_LICENSE_KEY"),
-          config.get("NEW_RELIC_LOG_ENDPOINT"),
-          config.get("APP_ENVIRONMENT"),
-        ]);
-        if (!licenseKey || !logEndpoint) return;
+        const e = env(c);
+        const licenseKey = e.NEW_RELIC_LICENSE_KEY;
+        const logEndpoint = e.NEW_RELIC_LOG_ENDPOINT || "https://log-api.newrelic.com/log/v1";
+        const appEnvironment = e.APP_ENVIRONMENT || "development";
+        if (!licenseKey) return;
 
         const cf = req.raw.cf as Record<string, unknown>;
         const colo = (cf?.colo as string) || "unknown";

@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { hasAuthKey, clearAuthKey } from "../api/client";
+import { hasToken, clearToken, hasAuthKey, clearAuthKey } from "../api/client";
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import Icon from "./Icon";
@@ -12,87 +12,6 @@ const navItems = [
   { to: "/activity", label: "Activity", icon: "activity" },
   { to: "/config", label: "Config", icon: "config" },
 ];
-
-function AuthScreen() {
-  const [keyValue, setKeyValue] = useState("");
-
-  const handleSubmit = () => {
-    if (keyValue) {
-      localStorage.setItem("mailroute_api_key", keyValue);
-      window.location.reload();
-    }
-  };
-
-  return (
-    <div
-      className="flex min-h-dvh items-center justify-center"
-      style={{
-        background: "var(--bg-primary)",
-        paddingTop: "var(--sat)",
-        paddingBottom: "var(--sab)",
-      }}
-    >
-      <motion.div
-        initial={{ opacity: 0, y: 24, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ type: "spring", bounce: 0, duration: 0.6 }}
-        className="w-full max-w-sm mx-4"
-        style={{
-          background: "var(--bg-secondary)",
-          borderRadius: 20,
-          border: "1px solid var(--border)",
-          boxShadow: "var(--shadow-xl)",
-          padding: "32px 28px",
-        }}
-      >
-        <div
-          style={{
-            width: 56,
-            height: 56,
-            borderRadius: 16,
-            background: "linear-gradient(135deg, var(--accent), #5ac8fa)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            marginBottom: 24,
-            boxShadow: "0 4px 12px rgba(0, 113, 227, 0.3)",
-          }}
-        >
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="2" y="4" width="20" height="16" rx="2" />
-            <polyline points="2,4 12,13 22,4" />
-          </svg>
-        </div>
-        <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: "-0.03em", marginBottom: 4 }}>mailroute</h1>
-        <p style={{ color: "var(--text-secondary)", fontSize: 14, marginBottom: 28, lineHeight: 1.5 }}>
-          Enter your API auth key to continue.
-        </p>
-        <div className="flex flex-col gap-3">
-          <input
-            type="password"
-            className="apple-input"
-            placeholder="API_AUTH_KEY"
-            value={keyValue}
-            onChange={(e) => setKeyValue(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-            autoFocus
-            autoComplete="off"
-            style={{ fontSize: 16, padding: "12px 14px", borderRadius: 12 }}
-          />
-          <motion.button
-            className="apple-btn apple-btn-primary w-full justify-center"
-            onClick={handleSubmit}
-            whileTap={{ scale: 0.97 }}
-            transition={{ type: "spring", bounce: 0, duration: 0.12 }}
-            style={{ padding: "12px 18px", borderRadius: 12, fontSize: 15 }}
-          >
-            Connect
-          </motion.button>
-        </div>
-      </motion.div>
-    </div>
-  );
-}
 
 function ThemeToggle({ collapsed }: { collapsed: boolean }) {
   const modes = ["light", "auto", "dark"] as const;
@@ -115,7 +34,7 @@ function ThemeToggle({ collapsed }: { collapsed: boolean }) {
   if (collapsed) {
     return (
       <motion.button onClick={() => set(modes[(modes.indexOf(mode) + 1) % modes.length])} whileTap={{ scale: 0.95 }} style={{ width: "100%", padding: "8px 0", border: "none", background: "transparent", color: "var(--text-tertiary)", cursor: "pointer", borderRadius: "var(--radius-md)", fontSize: 16 }} aria-label={`Theme: ${mode}`}>
-        {mode === "dark" ? "🌙" : mode === "light" ? "☀️" : "◐"}
+        {mode === "dark" ? "\u{1F319}" : mode === "light" ? "\u2600\uFE0F" : "\u25D0"}
       </motion.button>
     );
   }
@@ -191,7 +110,7 @@ function NavPills({ collapsed }: { collapsed: boolean }) {
       ))}
       <div style={{ height: 1, background: "var(--border)", margin: "4px 0" }} />
       <motion.button
-        onClick={() => { clearAuthKey(); window.location.reload(); }}
+        onClick={() => { clearToken(); clearAuthKey(); window.location.href = "/login"; }}
         whileTap={{ scale: 0.97 }}
         style={{
           width: "100%",
@@ -282,6 +201,7 @@ function BottomNav() {
 
 export default function Layout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem("mailroute-sidebar") === "collapsed");
   const sidebarW = collapsed ? 64 : 240;
 
@@ -294,7 +214,15 @@ export default function Layout() {
     localStorage.setItem("mailroute-sidebar", collapsed ? "collapsed" : "expanded");
   }, [collapsed]);
 
-  if (!hasAuthKey()) return <AuthScreen />;
+  const authenticated = hasToken() || hasAuthKey();
+
+  useEffect(() => {
+    if (!authenticated) {
+      navigate("/login", { replace: true });
+    }
+  }, [authenticated, navigate]);
+
+  if (!authenticated) return null;
 
   return (
     <div
@@ -358,7 +286,7 @@ export default function Layout() {
         <div style={{ position: "relative" }}>
           <motion.button
             className="mobile-signout"
-            onClick={() => { clearAuthKey(); window.location.reload(); }}
+            onClick={() => { clearToken(); clearAuthKey(); window.location.href = "/login"; }}
             whileTap={{ scale: 0.93 }}
             aria-label="Sign out"
             style={{

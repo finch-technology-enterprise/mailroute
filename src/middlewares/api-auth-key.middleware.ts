@@ -1,31 +1,11 @@
-// src/middlewares/api-auth-key.middleware.ts
 import { Context, Next } from "hono";
-import { CloudflareBindings } from "../lib/cloudflare.binding";
+import { drizzle } from "drizzle-orm/d1";
 import { ApiResponse } from "../utils/response.util";
-import { ConfigService } from "../services/config.service";
-
-/**
- * Constant-time, length-independent string comparison.
- * Hashes both inputs with SHA-256 first so the loop always runs over
- * fixed-length digests, leaking neither length nor content via timing.
- */
-async function timingSafeEqual(a: string, b: string): Promise<boolean> {
-  const encoder = new TextEncoder();
-  const [ha, hb] = await Promise.all([
-    crypto.subtle.digest("SHA-256", encoder.encode(a)),
-    crypto.subtle.digest("SHA-256", encoder.encode(b)),
-  ]);
-  const va = new Uint8Array(ha);
-  const vb = new Uint8Array(hb);
-  let diff = 0;
-  for (let i = 0; i < va.length; i++) {
-    diff |= va[i] ^ vb[i];
-  }
-  return diff === 0;
-}
+import { Tenant } from "../db/schema";
+import type { AppEnv } from "../lib/app-env";
 
 export const ApiAuthKeyMiddleware = async (
-  c: Context<{ Bindings: CloudflareBindings }>,
+  c: Context<AppEnv>,
   next: Next,
 ) => {
   const providedKey = c.req.header("X-API-AUTH-KEY");
@@ -37,13 +17,22 @@ export const ApiAuthKeyMiddleware = async (
     );
   }
 
-  const apiKey = await new ConfigService(c.env).get("API_AUTH_KEY");
-  if (!(await timingSafeEqual(providedKey, apiKey))) {
-    return c.json(
-      ApiResponse(false, "Unauthorized: Invalid Authorization header"),
-      401,
-    );
+  const encoder = new TextEncoder();
+  const providedHash = await crypto.subtle.digest("SHA-256", encoder.encode(providedKey));
+  const providedB64 = btoa(String.fromCharCode(...new Uint8Array(providedHash)))
+    .replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+
+  const db = drizzle(c.env.D1_DATABASE);
+  const allTenants = await db.select({
+    id: Tenant.id,
+    apiAuthKeyHash: Tenant.apiAuthKeyHash,
+  }).from(Tenant).all();
+
+  const matchedTenant = allTenants.find((t) => t.apiAuthKeyHash === providedB64);
+  if (!matchedTenant) {
+    return c.json(ApiResponse(false, "Unauthorized: Invalid API key"), 401);
   }
 
+  c.set("tenantId", matchedTenant.id);
   await next();
 };

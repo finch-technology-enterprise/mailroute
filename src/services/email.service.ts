@@ -1,4 +1,3 @@
-// src/services/email.service.ts
 import { Context } from "hono";
 import { drizzle } from "drizzle-orm/d1";
 import { CloudflareBindings } from "../lib/cloudflare.binding";
@@ -20,19 +19,15 @@ export interface EmailPayload {
 
 export class EmailService {
   private readonly vendorService: EmailVendorService;
+  private readonly tenantId: string;
 
-  constructor(env: CloudflareBindings) {
-    this.vendorService = new EmailVendorService(env);
+  constructor(env: CloudflareBindings, tenantId: string) {
+    this.vendorService = new EmailVendorService(env, tenantId);
+    this.tenantId = tenantId;
   }
 
-  /**
-   * Sends `payload` through the configured vendor failover chain. Tries each
-   * enabled vendor in priority order; on failure, logs and falls back to the
-   * next. Throws only when every vendor fails (or none are configured) — the
-   * route layer runs this inside waitUntil().catch().
-   */
   async sendEmail(
-    c: Context<{ Bindings: CloudflareBindings }>,
+    c: Context<any, any, any>,
     payload: EmailPayload,
     vendorName?: string,
   ) {
@@ -72,6 +67,7 @@ export class EmailService {
           .insert(SendLog)
           .values({
             id: crypto.randomUUID(),
+            tenantId: this.tenantId,
             vendorId: vendor.id,
             vendorName: vendor.name,
             toEmail: payload.to,
@@ -98,6 +94,7 @@ export class EmailService {
           .insert(SendLog)
           .values({
             id: crypto.randomUUID(),
+            tenantId: this.tenantId,
             vendorId: vendor.id,
             vendorName: vendor.name,
             toEmail: payload.to,
@@ -119,7 +116,6 @@ export class EmailService {
   }
 }
 
-/** Parses a vendor row's JSON `config` column; returns {} on null/invalid. */
 function parseConfig(raw: string | null): Record<string, unknown> {
   if (!raw) return {};
   try {

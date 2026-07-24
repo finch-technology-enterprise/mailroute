@@ -5,9 +5,41 @@ import {
   primaryKey,
 } from "drizzle-orm/sqlite-core";
 
-// src/db/schema.ts
+// --- Multi-tenant tables ---
+
+export const Tenant = sqliteTable("tenants", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  apiAuthKeyHash: text("api_auth_key_hash"),
+  createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").$defaultFn(() => new Date().toISOString()),
+});
+
+export const User = sqliteTable("users", {
+  id: text("id").primaryKey(),
+  tenantId: text("tenant_id").notNull().references(() => Tenant.id),
+  email: text("email").notNull(),
+  passwordHash: text("password_hash").notNull(),
+  name: text("name").notNull().default(""),
+  role: text("role").notNull().default("admin"),
+  createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").$defaultFn(() => new Date().toISOString()),
+});
+
+export const Session = sqliteTable("sessions", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => User.id),
+  tokenHash: text("token_hash").notNull(),
+  expiresAt: text("expires_at").notNull(),
+  createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
+});
+
+// --- Existing tables with added tenant_id ---
+
 export const EmailTemplate = sqliteTable("email_templates", {
   id: text("id").primaryKey(),
+  tenantId: text("tenant_id").notNull(),
   slug: text("slug").notNull().unique(),
   subject: text("subject").notNull(),
   content: text("content").notNull(),
@@ -15,30 +47,21 @@ export const EmailTemplate = sqliteTable("email_templates", {
   updatedAt: text("updated_at").$defaultFn(() => new Date().toISOString()),
 });
 
-/**
- * Central, multi-service configuration store. Shared across microservices
- * that bind the same D1 database. `service = "*"` holds values shared by all
- * services; a row with a specific service name overrides the shared value.
- */
 export const ServiceConfig = sqliteTable(
   "service_config",
   {
+    tenantId: text("tenant_id").notNull(),
     service: text("service").notNull(),
     key: text("key").notNull(),
     value: text("value").notNull(),
     updatedAt: text("updated_at").$defaultFn(() => new Date().toISOString()),
   },
-  (table) => [primaryKey({ columns: [table.service, table.key] })],
+  (table) => [primaryKey({ columns: [table.tenantId, table.service, table.key] })],
 );
 
-/**
- * Email vendor registry. One row per vendor; `name` maps to a registered
- * adapter in src/vendors. Enabled vendors are tried in ascending `priority`
- * order (failover chain). Editable live in D1 — no redeploy needed to switch
- * vendors, rotate tokens, or change the sender identity.
- */
 export const EmailVendor = sqliteTable("email_vendors", {
   id: text("id").primaryKey(),
+  tenantId: text("tenant_id").notNull(),
   name: text("name").notNull().unique(),
   enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
   priority: integer("priority").notNull(),
@@ -55,6 +78,7 @@ export type EmailVendorRow = typeof EmailVendor.$inferSelect;
 
 export const SendLog = sqliteTable("send_logs", {
   id: text("id").primaryKey(),
+  tenantId: text("tenant_id").notNull(),
   vendorId: text("vendor_id").notNull(),
   vendorName: text("vendor_name").notNull(),
   toEmail: text("to_email").notNull(),
@@ -70,6 +94,7 @@ export type SendLogRow = typeof SendLog.$inferSelect;
 
 export const ActivityLog = sqliteTable("activity_logs", {
   id: text("id").primaryKey(),
+  tenantId: text("tenant_id").notNull(),
   type: text("type").notNull(),
   summary: text("summary").notNull(),
   detail: text("detail"),
@@ -80,6 +105,7 @@ export type ActivityLogRow = typeof ActivityLog.$inferSelect;
 
 export const PushSubscription = sqliteTable("push_subscriptions", {
   id: text("id").primaryKey(),
+  tenantId: text("tenant_id").notNull(),
   endpoint: text("endpoint").notNull().unique(),
   p256dhKey: text("p256dh_key").notNull(),
   authKey: text("auth_key").notNull(),

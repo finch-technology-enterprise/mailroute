@@ -1,14 +1,16 @@
 // src/services/email-template.service.ts
 import { drizzle } from "drizzle-orm/d1";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { EmailTemplate } from "../db/schema"; //
 import { CloudflareBindings } from "../lib/cloudflare.binding";
 
 export class EmailTemplateService {
   private db;
+  private tenantId: string;
 
-  constructor(env: CloudflareBindings) {
+  constructor(env: CloudflareBindings, tenantId: string) {
     this.db = drizzle(env.D1_DATABASE);
+    this.tenantId = tenantId;
   }
 
   async getProcessedTemplate(
@@ -18,7 +20,7 @@ export class EmailTemplateService {
     const template = await this.db
       .select()
       .from(EmailTemplate)
-      .where(eq(EmailTemplate.slug, slug))
+      .where(and(eq(EmailTemplate.slug, slug), eq(EmailTemplate.tenantId, this.tenantId)))
       .get();
 
     if (!template) return null;

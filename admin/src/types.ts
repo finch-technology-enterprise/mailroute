@@ -55,3 +55,30 @@ export interface TestSendPayload {
   content: string;
   vendor?: string;
 }
+
+// --- Auth types ---
+
+export interface TenantInfo {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+export interface UserInfo {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+}
+
+export interface LoginData {
+  user: UserInfo;
+  tenant: TenantInfo;
+  token: string;
+}
+
+export interface SignupData {
+  user: UserInfo;
+  tenant: TenantInfo & { apiKey: string };
+  token: string;
+}
