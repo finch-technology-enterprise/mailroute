@@ -231,7 +231,7 @@ function BottomNav() {
   return (
     <nav className="bottom-nav">
       <div className="bottom-nav-inner">
-        {navItems.slice(0, 6).map((item) => {
+        {navItems.map((item) => {
           const isActive =
             activeTo === item.to ||
             (item.to !== "/" && activeTo.startsWith(item.to));
@@ -270,19 +270,6 @@ function BottomNav() {
             </motion.button>
           );
         })}
-        <motion.button
-          type="button"
-          className="bottom-nav-item"
-          onClick={() => { clearAuthKey(); window.location.reload(); }}
-          whileTap={{ scale: 0.93 }}
-          transition={{ type: "spring", bounce: 0, duration: 0.12 }}
-          style={{ flex: 1 }}
-          aria-label="Sign out"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--red)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
-          </svg>
-        </motion.button>
       </div>
     </nav>
   );
@@ -363,14 +350,42 @@ export default function Layout() {
           WebkitOverflowScrolling: "touch",
         }}
       >
-        <motion.div
-          key={location.pathname}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.12 }}
-        >
-          <Outlet />
-        </motion.div>
+        <div style={{ position: "relative" }}>
+          <motion.button
+            className="mobile-signout"
+            onClick={() => { clearAuthKey(); window.location.reload(); }}
+            whileTap={{ scale: 0.93 }}
+            aria-label="Sign out"
+            style={{
+              position: "absolute",
+              top: -8,
+              right: 0,
+              zIndex: 20,
+              width: 36,
+              height: 36,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              border: "none",
+              background: "transparent",
+              color: "var(--text-tertiary)",
+              cursor: "pointer",
+              borderRadius: "var(--radius-md)",
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+          </motion.button>
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.12 }}
+          >
+            <Outlet />
+          </motion.div>
+        </div>
       </main>
 
       <BottomNav />

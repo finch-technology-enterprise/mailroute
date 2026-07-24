@@ -759,6 +759,9 @@ body:has(.modal-overlay) .bottom-nav {
   .sidebar-nav {
     display: flex;
   }
+  .mobile-signout {
+    display: none !important;
+  }
 }
 
 /* Focus visible for keyboard nav */
