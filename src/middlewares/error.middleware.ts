@@ -17,6 +17,8 @@ export const ErrorHandler = (error: unknown, c: Context) => {
 
   // Only echo a message for explicit HTTPExceptions (intentional, safe text).
   // Everything else gets a generic message so we don't leak internals.
+  console.error("ERROR_HANDLER_CAUGHT:", internalDetail, error instanceof Error ? error.stack : "");
+
   const clientMessage =
     error instanceof HTTPException ? error.message : "Internal Server Error";
 
