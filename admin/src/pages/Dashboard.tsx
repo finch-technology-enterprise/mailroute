@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { getStats } from "../api/admin";
 import { get } from "../api/client";
 import type { Stats, ApiResponse } from "../types";
+import Icon from "../components/Icon";
 
 interface LogEntry {
   id: string;
@@ -14,20 +15,20 @@ interface LogEntry {
   createdAt: string;
 }
 
+const iconNameMap: Record<string, string> = {
+  Vendors: "vendors",
+  Templates: "templates",
+  "Test Send": "test-send",
+  Activity: "activity",
+  Config: "config",
+};
+
 function StatCard({ label, value, actionLabel, onClick }: {
   label: string;
   value: string;
   actionLabel: string;
   onClick: () => void;
 }) {
-  const iconMap: Record<string, string> = {
-    Vendors: "<path d='M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2'/><circle cx='9' cy='7' r='4'/><path d='M23 21v-2a4 4 0 0 0-3-3.87'/><path d='M16 3.13a4 4 0 0 1 0 7.75'/>",
-    Templates: "<path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline points='14 2 14 8 20 8'/>",
-    "Test Send": "<path d='M22 2L11 13'/><path d='M22 2L15 22l-4-9-9-4z'/>",
-    Activity: "<polyline points='22 12 18 12 15 21 9 3 6 12 2 12'/>",
-    Config: "<circle cx='12' cy='12' r='3'/><path d='M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z'/>",
-  };
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -39,7 +40,7 @@ function StatCard({ label, value, actionLabel, onClick }: {
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 14 }}>
         <p style={{ color: "var(--text-secondary)", letterSpacing: "0.02em", textTransform: "uppercase", fontSize: 11, fontWeight: 600 }}>{label}</p>
         <div style={{ width: 34, height: 34, borderRadius: 10, background: "var(--accent)", opacity: 0.08, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: iconMap[label] || "" }} />
+          <Icon name={iconNameMap[label]} size={17} color="var(--accent)" strokeWidth={1.5} />
         </div>
       </div>
       <div style={{ marginTop: value ? 0 : "auto" }}>
