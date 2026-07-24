@@ -194,13 +194,14 @@ const testSendSchema = z.object({
   to: z.string().email().max(254),
   subject: z.string().min(1).max(255),
   content: z.string().min(1).max(50000),
+  vendor: z.string().optional(),
 });
 
 admin.post("/test-send", zValidator("json", testSendSchema), async (c) => {
-  const { to, subject, content } = c.req.valid("json");
+  const { to, subject, content, vendor } = c.req.valid("json");
   const emailService = new EmailService(c.env);
   try {
-    await emailService.sendEmail(c, { to, subject, content });
+    await emailService.sendEmail(c, { to, subject, content }, vendor);
     return c.json(ApiResponse(true, "Email sent"));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

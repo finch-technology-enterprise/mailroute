@@ -243,19 +243,25 @@ function SettingsPopover({ onClose }: { onClose: () => void }) {
   );
 }
 
-function NavPills() {
+function NavPills({ collapsed }: { collapsed: boolean }) {
   const [showSettings, setShowSettings] = useState(false);
 
   return (
     <>
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1" style={{ padding: collapsed ? "0 8px" : "0 12px" }}>
         {navItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
             end={item.to === "/"}
-            className="nav-item relative px-3 py-2.5 text-sm font-medium rounded-lg transition-colors"
-            style={{ color: "var(--text-secondary)", letterSpacing: "-0.01em" }}
+            className="nav-item relative py-2.5 text-sm font-medium rounded-lg transition-colors"
+            style={{
+              color: "var(--text-secondary)",
+              letterSpacing: "-0.01em",
+              display: "flex",
+              justifyContent: collapsed ? "center" : "flex-start",
+              padding: collapsed ? "10px 0" : "10px 12px",
+            }}
           >
             {({ isActive }) => (
               <>
@@ -268,16 +274,19 @@ function NavPills() {
                   />
                 )}
                 <span
-                  className="relative z-10 flex items-center gap-3"
+                  className="relative z-10 flex items-center"
                   style={{
+                    gap: collapsed ? 0 : 10,
                     color: isActive ? "var(--accent)" : undefined,
                     fontWeight: isActive ? 600 : 500,
+                    flexDirection: collapsed ? "column" : "row",
+                    fontSize: collapsed ? 10 : undefined,
                   }}
                 >
                   <span
                     style={{
-                      width: 20,
-                      height: 20,
+                      width: collapsed ? 22 : 20,
+                      height: collapsed ? 22 : 20,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -285,7 +294,7 @@ function NavPills() {
                     }}
                     dangerouslySetInnerHTML={{ __html: item.icon }}
                   />
-                  {item.label}
+                  {!collapsed && item.label}
                 </span>
               </>
             )}
@@ -293,14 +302,19 @@ function NavPills() {
         ))}
       </div>
 
-      <div className="mt-auto pt-4 relative">
+      <div className="relative" style={{ padding: collapsed ? "8px" : "8px 12px", marginTop: "auto" }}>
         <motion.button
-          className="nav-item w-full flex items-center gap-3 text-sm rounded-lg transition-colors"
+          className="nav-item w-full flex items-center rounded-lg transition-colors"
           style={{
             fontSize: 13,
             fontWeight: 500,
             color: "var(--text-tertiary)",
-            padding: "10px 12px",
+            padding: collapsed ? "10px 0" : "10px 12px",
+            justifyContent: collapsed ? "center" : "flex-start",
+            gap: collapsed ? 0 : 10,
+            border: "none",
+            background: "transparent",
+            cursor: "pointer",
           }}
           onClick={() => setShowSettings(!showSettings)}
           whileTap={{ scale: 0.98 }}
@@ -314,17 +328,20 @@ function NavPills() {
             strokeWidth="1.5"
             strokeLinecap="round"
             strokeLinejoin="round"
+            style={{ flexShrink: 0 }}
           >
             <circle cx="12" cy="12" r="3" />
             <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
           </svg>
-          Settings
+          {!collapsed && "Settings"}
         </motion.button>
-        <AnimatePresence>
-          {showSettings && (
-            <SettingsPopover onClose={() => setShowSettings(false)} />
-          )}
-        </AnimatePresence>
+        {!collapsed && (
+          <AnimatePresence>
+            {showSettings && (
+              <SettingsPopover onClose={() => setShowSettings(false)} />
+            )}
+          </AnimatePresence>
+        )}
       </div>
     </>
   );
@@ -387,12 +404,17 @@ function BottomNav() {
 
 export default function Layout() {
   const location = useLocation();
-  const navigate = useNavigate();
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem("mailroute-sidebar") === "collapsed");
+  const sidebarW = collapsed ? 64 : 240;
 
   useEffect(() => {
     const saved = localStorage.getItem("mailroute-theme");
     if (saved) document.documentElement.setAttribute("data-theme", saved);
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem("mailroute-sidebar", collapsed ? "collapsed" : "expanded");
+  }, [collapsed]);
 
   if (!hasAuthKey()) return <AuthScreen />;
 
@@ -402,24 +424,54 @@ export default function Layout() {
       style={{ background: "var(--bg-primary)", paddingTop: "var(--sat)" }}
     >
       <nav
-        className="sidebar-nav glass-sidebar flex-col px-5 py-8 fixed h-screen z-10"
-        style={{ width: "var(--sidebar-width)" }}
+        className="sidebar-nav glass-sidebar flex-col fixed h-screen z-10"
+        style={{ width: sidebarW, overflow: "hidden", transition: "width 0.2s cubic-bezier(0.16, 1, 0.3, 1)" }}
       >
-        <h2
-          className="mb-10 px-3"
-          style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-0.03em" }}
-        >
-          mailroute
-        </h2>
-        <NavPills />
+        <div style={{ padding: collapsed ? "28px 0" : "28px 20px 0", display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "space-between", marginBottom: collapsed ? 24 : 32 }}>
+          {collapsed ? (
+            <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-0.03em" }}>M</span>
+          ) : (
+            <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-0.03em" }}>mailroute</h2>
+          )}
+        </div>
+        <NavPills collapsed={collapsed} />
+        <div style={{ padding: collapsed ? "8px" : "8px 12px", marginTop: "auto" }}>
+          <motion.button
+            onClick={() => setCollapsed(!collapsed)}
+            whileTap={{ scale: 0.95 }}
+            style={{
+              width: "100%",
+              padding: collapsed ? "10px 0" : "8px 10px",
+              border: "none",
+              background: "transparent",
+              color: "var(--text-tertiary)",
+              cursor: "pointer",
+              borderRadius: "var(--radius-md)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: collapsed ? "center" : "flex-start",
+              gap: 10,
+              fontSize: 13,
+              fontWeight: 500,
+              transition: "color 0.15s",
+            }}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: collapsed ? "rotate(180deg)" : "none", flexShrink: 0 }}>
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="9" y1="3" x2="9" y2="21" />
+            </svg>
+            {!collapsed && "Collapse"}
+          </motion.button>
+        </div>
       </nav>
 
       <main
         className="flex-1"
         style={{
-          marginLeft: "var(--sidebar-width)",
+          marginLeft: sidebarW,
           padding: "40px 36px",
           paddingBottom: 40,
+          transition: "margin-left 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
         }}
       >
         <motion.div
