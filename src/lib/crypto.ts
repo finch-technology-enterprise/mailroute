@@ -38,16 +38,40 @@ export async function encrypt(value: string, secret: string): Promise<string> {
   return ENC_PREFIX + btoa(String.fromCharCode(...combined));
 }
 
+async function legacyKeyFromEnv(secret: string): Promise<CryptoKey> {
+  return crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret.padEnd(32, "x").slice(0, 32)),
+    { name: "AES-GCM" },
+    false,
+    ["decrypt"],
+  );
+}
+
 export async function decrypt(value: string, secret: string): Promise<string> {
   if (!value.startsWith(ENC_PREFIX)) return value;
-  const key = await keyFromEnv(secret);
   const raw = Uint8Array.from(atob(value.slice(ENC_PREFIX.length)), (c) =>
     c.charCodeAt(0),
   );
   const iv = raw.slice(0, 12);
   const data = raw.slice(12);
-  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, data);
-  return new TextDecoder().decode(plain);
+  try {
+    const key = await keyFromEnv(secret);
+    const plain = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv },
+      key,
+      data,
+    );
+    return new TextDecoder().decode(plain);
+  } catch {
+    const key = await legacyKeyFromEnv(secret);
+    const plain = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv },
+      key,
+      data,
+    );
+    return new TextDecoder().decode(plain);
+  }
 }
 
 export function isEncrypted(value: string): boolean {
