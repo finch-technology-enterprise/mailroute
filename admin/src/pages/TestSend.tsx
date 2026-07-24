@@ -322,20 +322,14 @@ export default function TestSend() {
                 style={{
                   border: "1px solid var(--border)",
                   borderRadius: 12,
-                  overflow: "hidden",
+                  overflow: "auto",
                   background: "#fff",
+                  maxHeight: 400,
                 }}
               >
-                <iframe
-                  srcDoc={content}
-                  title="Template preview"
-                  sandbox=""
-                  style={{
-                    width: "100%",
-                    height: 400,
-                    border: "none",
-                    display: "block",
-                  }}
+                <div
+                  style={{ padding: 16, minHeight: 200 }}
+                  dangerouslySetInnerHTML={{ __html: content }}
                 />
               </div>
             </div>
