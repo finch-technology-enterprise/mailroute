@@ -302,7 +302,7 @@ function NavPills({ collapsed }: { collapsed: boolean }) {
         ))}
       </div>
 
-      <div className="relative" style={{ padding: collapsed ? "8px" : "8px 12px", marginTop: "auto" }}>
+      <div className="relative" style={{ padding: collapsed ? "8px" : "8px 12px" }}>
         <motion.button
           className="nav-item w-full flex items-center rounded-lg transition-colors"
           style={{
