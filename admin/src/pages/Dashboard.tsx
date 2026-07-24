@@ -7,11 +7,10 @@ import type { Stats, ApiResponse } from "../types";
 
 interface LogEntry {
   id: string;
-  vendorName: string;
-  toEmail: string;
-  subject: string;
-  status: "sent" | "failed";
-  error?: string;
+  type: string;
+  summary: string;
+  detail: string | null;
+  status: string | null;
   createdAt: string;
 }
 
@@ -133,57 +132,61 @@ export default function Dashboard() {
                 <button className="apple-link" onClick={() => navigate("/activity")} style={{ fontSize: 12 }}>View all</button>
               </div>
               <div className="card overflow-hidden">
-                {recentLogs.map((log, i) => (
-                  <div
-                    key={log.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 12,
-                      padding: "12px 18px",
-                      borderBottom: i < recentLogs.length - 1 ? "1px solid var(--border)" : "none",
-                    }}
-                  >
-                    <div style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: 8,
-                      background: log.status === "sent" ? "var(--green-bg)" : "var(--red-bg)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                    }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={log.status === "sent" ? "var(--green)" : "var(--red)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        {log.status === "sent"
-                          ? <><polyline points="20 6 9 17 4 12" /></>
-                          : <><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></>
-                        }
-                      </svg>
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {log.subject}
+                {recentLogs.map((log, i) => {
+                  const isSent = log.type === "email_sent";
+                  const isFailed = log.type === "email_failed";
+                  return (
+                    <div
+                      key={log.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        padding: "12px 18px",
+                        borderBottom: i < recentLogs.length - 1 ? "1px solid var(--border)" : "none",
+                      }}
+                    >
+                      <div style={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: 8,
+                        background: isSent ? "var(--green-bg)" : isFailed ? "var(--red-bg)" : "var(--accent)",
+                        opacity: isSent || isFailed ? 1 : 0.08,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                      }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={isSent ? "var(--green)" : isFailed ? "var(--red)" : "var(--accent)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          {isSent ? <polyline points="20 6 9 17 4 12" />
+                          : isFailed ? <><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></>
+                          : <><circle cx="12" cy="12" r="1" /><path d="M12 8v4M12 16h0" /></>}
+                        </svg>
                       </div>
-                      <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 1 }}>
-                        <span className="code" style={{ fontSize: 11 }}>{log.vendorName}</span>
-                        <span style={{ margin: "0 6px" }}>→</span>
-                        {log.toEmail}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {log.summary}
+                        </div>
+                        <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {log.detail}
+                        </div>
                       </div>
+                      {log.status && (
+                        <span style={{
+                          fontSize: 11,
+                          fontWeight: 500,
+                          padding: "2px 8px",
+                          borderRadius: 10,
+                          background: isSent ? "var(--green-bg)" : "var(--red-bg)",
+                          color: isSent ? "var(--green)" : "var(--red)",
+                          flexShrink: 0,
+                        }}>
+                          {log.status}
+                        </span>
+                      )}
                     </div>
-                    <span style={{
-                      fontSize: 11,
-                      fontWeight: 500,
-                      padding: "2px 8px",
-                      borderRadius: 10,
-                      background: log.status === "sent" ? "var(--green-bg)" : "var(--red-bg)",
-                      color: log.status === "sent" ? "var(--green)" : "var(--red)",
-                      flexShrink: 0,
-                    }}>
-                      {log.status}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </motion.div>
           )}
