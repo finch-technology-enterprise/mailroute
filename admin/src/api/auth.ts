@@ -19,6 +19,10 @@ export function getMe(): Promise<ApiResponse<{ user: UserInfo; tenant: TenantInf
   return authRequest("GET", "/me");
 }
 
+export function changePassword(currentPassword: string, newPassword: string): Promise<ApiResponse<null>> {
+  return authRequest("POST", "/change-password", { currentPassword, newPassword });
+}
+
 export function logout(): Promise<ApiResponse<null>> {
   return authRequest("POST", "/logout", {});
 }

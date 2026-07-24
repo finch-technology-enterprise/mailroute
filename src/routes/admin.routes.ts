@@ -15,6 +15,7 @@ import {
   ServiceConfig,
   PushSubscription,
   ApiKey,
+  Tenant,
 } from "../db/schema";
 import { EmailService } from "../services/email.service";
 import { ConfigService } from "../services/config.service";
@@ -243,6 +244,29 @@ admin.post("/test-send", zValidator("json", testSendSchema), async (c) => {
     const message = error instanceof Error ? error.message : String(error);
     return c.json(ApiResponse(false, message), 502);
   }
+});
+
+// --- Tenant Settings ---
+
+admin.get("/tenant/settings", async (c) => {
+  const db = drizzle(c.env.D1_DATABASE);
+  const tenantId = c.get("tenantId");
+  const tenant = await db.select().from(Tenant).where(eq(Tenant.id, tenantId)).get();
+  if (!tenant) return c.json(ApiResponse(false, "Tenant not found"), 404);
+  const settings = (() => { try { return JSON.parse(tenant.settings); } catch { return {}; } })();
+  return c.json(ApiResponse(true, null, { name: tenant.name, slug: tenant.slug, settings }));
+});
+
+const settingsSchema = z.object({
+  settings: z.record(z.string(), z.unknown()),
+});
+
+admin.put("/tenant/settings", zValidator("json", settingsSchema), async (c) => {
+  const db = drizzle(c.env.D1_DATABASE);
+  const tenantId = c.get("tenantId");
+  const { settings } = c.req.valid("json");
+  await db.update(Tenant).set({ settings: JSON.stringify(settings) }).where(eq(Tenant.id, tenantId)).execute();
+  return c.json(ApiResponse(true, "Settings updated"));
 });
 
 // --- Config ---

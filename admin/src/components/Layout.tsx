@@ -11,7 +11,7 @@ const navItems = [
   { to: "/test-send", label: "Test Send", icon: "test-send" },
   { to: "/activity", label: "Activity", icon: "activity" },
   { to: "/api-keys", label: "API Keys", icon: "key" },
-  { to: "/config", label: "Config", icon: "config" },
+  { to: "/settings", label: "Settings", icon: "config" },
 ];
 
 function ThemeToggle({ collapsed }: { collapsed: boolean }) {

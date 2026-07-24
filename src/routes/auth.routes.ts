@@ -150,6 +150,28 @@ auth.get("/me", requireAuth, async (c) => {
   }));
 });
 
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1).max(128),
+  newPassword: z.string().min(8).max(128),
+});
+
+auth.post("/change-password", requireAuth, zValidator("json", changePasswordSchema), async (c) => {
+  const db = drizzle(c.env.D1_DATABASE);
+  const userId = c.get("userId");
+  const { currentPassword, newPassword } = c.req.valid("json");
+
+  const user = await db.select().from(User).where(eq(User.id, userId)).get();
+  if (!user) return c.json(ApiResponse(false, "User not found"), 404);
+
+  const valid = await verifyPassword(currentPassword, user.passwordHash);
+  if (!valid) return c.json(ApiResponse(false, "Current password is incorrect"), 403);
+
+  const passwordHash = await hashPassword(newPassword);
+  await db.update(User).set({ passwordHash }).where(eq(User.id, userId)).execute();
+
+  return c.json(ApiResponse(true, "Password changed successfully"));
+});
+
 auth.post("/logout", requireAuth, async (c) => {
   return c.json(ApiResponse(true, "Logged out"));
 });
