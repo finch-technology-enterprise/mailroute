@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useToast } from "../components/Toast";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -280,7 +280,6 @@ export default function Config() {
                     <th>Key</th>
                     <th>Value</th>
                     <th style={{ width: 60 }}>Updated</th>
-                    <th style={{ width: 140 }} className="text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -290,7 +289,7 @@ export default function Config() {
                     const isSecretKey = isSecret(row.key);
                     const isEditing = editing?.service === row.service && editing?.key === row.key;
                     return (
-                      <tr key={id} className="card-hover">
+                      <Fragment key={id}><tr className="card-hover">
                         <td data-label="Key" style={{ fontWeight: 500 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                             {row.encrypted && (
@@ -326,9 +325,11 @@ export default function Config() {
                         <td data-label="Updated" style={{ fontSize: 11, color: "var(--text-tertiary)", whiteSpace: "nowrap" }}>
                           {row.updated_at && formatTime(row.updated_at)}
                         </td>
-                        <td data-label="Actions" className="text-right">
+                      </tr>
+                      <tr key={`${id}-actions`} className="no-card" style={{ borderBottom: "1px solid var(--border)" }}>
+                        <td colSpan={3} style={{ padding: "6px 16px 10px", border: "none" }}>
                           {isEditing ? null : (
-                            <div style={{ display: "flex", gap: 2, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                               <button className="apple-link" onClick={() => { setEditing({ service: row.service, key: row.key }); setEditValue(row.value); }}>Edit</button>
                               {isSecretKey && !row.encrypted && (
                                 <button className="apple-link" onClick={() => handleEncrypt(row.service, row.key)} disabled={revealing.has(id)}>Encrypt</button>
@@ -353,7 +354,7 @@ export default function Config() {
                             </div>
                           )}
                         </td>
-                      </tr>
+                      </tr></Fragment>
                     );
                   })}
                 </tbody>
