@@ -11,8 +11,8 @@ export const senderAdapter: EmailVendorAdapter = {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        from: { email: from.email, name: from.name },
-        to: { email: to, name: "" },
+        from: { email: from.email, ...(from.name ? { name: from.name } : {}) },
+        to: { email: to },
         subject,
         html,
       }),
