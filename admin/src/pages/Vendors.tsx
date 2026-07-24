@@ -5,6 +5,9 @@ import Table from "../components/Table";
 import StatusBadge from "../components/StatusBadge";
 import EmptyState from "../components/EmptyState";
 import ConfirmDialog from "../components/ConfirmDialog";
+import AnimatedPage from "../components/AnimatedPage";
+import Skeleton from "../components/Skeleton";
+import InlineError from "../components/InlineError";
 import VendorForm from "./VendorForm";
 import { listVendors, createVendor, updateVendor, deleteVendor } from "../api/vendors";
 import type { Vendor, VendorFormData } from "../types";
@@ -183,7 +186,7 @@ export default function Vendors() {
   ], [handleToggle]);
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ type: "spring", bounce: 0, duration: 0.35 }}>
+    <AnimatedPage>
       <div className="mb-6 flex items-center justify-between" style={{ flexWrap: "wrap", gap: 12 }}>
         <h1>Vendors</h1>
         <div className="flex gap-3">
@@ -204,12 +207,7 @@ export default function Vendors() {
         </div>
       </div>
 
-      {error && (
-        <div className="apple-error mb-6 flex items-center justify-between">
-          <span>{error}</span>
-          <button className="apple-link" style={{ fontSize: 12 }} onClick={fetchVendors}>Retry</button>
-        </div>
-      )}
+      {error && <InlineError error={error} onRetry={fetchVendors} />}
 
       {!loading && filtered.length === 0 ? (
         <EmptyState
@@ -220,15 +218,7 @@ export default function Vendors() {
         />
       ) : loading ? (
         <div className="flex flex-col gap-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="card p-5" style={{ display: "flex", gap: 12, alignItems: "center" }}>
-              <div className="skeleton-shimmer" style={{ width: 20, height: 14 }} />
-              <div className="skeleton-shimmer" style={{ width: "20%", height: 14 }} />
-              <div className="skeleton-shimmer" style={{ width: "15%", height: 14 }} />
-              <div className="skeleton-shimmer" style={{ width: "10%", height: 14 }} />
-              <div className="skeleton-shimmer" style={{ width: "25%", height: 14 }} />
-            </div>
-          ))}
+          <Skeleton count={3} height={46} />
         </div>
       ) : (
         <div onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
@@ -258,6 +248,6 @@ export default function Vendors() {
 
       <VendorForm open={formOpen} vendor={editingVendor} onSave={handleSave} onClose={() => { setFormOpen(false); setEditingVendor(null); }} />
       <ConfirmDialog open={!!deleteTarget} title="Delete Vendor" message={`Delete "${deleteTarget?.name}"? This cannot be undone.`} onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} isLoading={deleting} />
-    </motion.div>
+    </AnimatedPage>
   );
 }

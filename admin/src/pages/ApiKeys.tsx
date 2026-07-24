@@ -3,6 +3,9 @@ import { motion, AnimatePresence } from "motion/react";
 import { useToast } from "../components/Toast";
 import ConfirmDialog from "../components/ConfirmDialog";
 import EmptyState from "../components/EmptyState";
+import AnimatedPage from "../components/AnimatedPage";
+import Skeleton from "../components/Skeleton";
+import InlineError from "../components/InlineError";
 import { get, post, del } from "../api/client";
 import type { ApiResponse } from "../types";
 import Icon from "../components/Icon";
@@ -101,7 +104,7 @@ export default function ApiKeys() {
   const revokedKeys = keys.filter((k) => k.revokedAt);
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ type: "spring", bounce: 0, duration: 0.35 }}>
+    <AnimatedPage>
       <div className="mb-6 flex items-center justify-between" style={{ flexWrap: "wrap", gap: 12 }}>
         <h1>API Keys</h1>
         <motion.button
@@ -113,22 +116,11 @@ export default function ApiKeys() {
         </motion.button>
       </div>
 
-      {error && (
-        <div className="apple-error mb-6 flex items-center justify-between">
-          <span>{error}</span>
-          <button className="apple-link" style={{ fontSize: 12 }} onClick={fetchKeys}>Retry</button>
-        </div>
-      )}
+      {error && <InlineError error={error} onRetry={fetchKeys} />}
 
       {loading ? (
         <div className="flex flex-col gap-3">
-          {[1, 2].map((i) => (
-            <div key={i} className="card p-5" style={{ display: "flex", gap: 12, alignItems: "center" }}>
-              <div className="skeleton-shimmer" style={{ width: "30%", height: 14 }} />
-              <div className="skeleton-shimmer" style={{ width: "20%", height: 14 }} />
-              <div className="skeleton-shimmer" style={{ width: "15%", height: 14 }} />
-            </div>
-          ))}
+          <Skeleton count={2} height={46} />
         </div>
       ) : keys.length === 0 ? (
         <EmptyState
@@ -307,6 +299,6 @@ export default function ApiKeys() {
         isLoading={revoking}
         confirmLabel="Revoke"
       />
-    </motion.div>
+    </AnimatedPage>
   );
 }

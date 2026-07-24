@@ -4,6 +4,9 @@ import { useToast } from "../components/Toast";
 import Table from "../components/Table";
 import EmptyState from "../components/EmptyState";
 import ConfirmDialog from "../components/ConfirmDialog";
+import AnimatedPage from "../components/AnimatedPage";
+import Skeleton from "../components/Skeleton";
+import InlineError from "../components/InlineError";
 import TemplateForm from "./TemplateForm";
 import TemplatePreview from "../components/TemplatePreview";
 import {
@@ -82,11 +85,7 @@ export default function Templates() {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ type: "spring", bounce: 0, duration: 0.35 }}
-    >
+    <AnimatedPage>
       <div
         className="mb-6 flex items-center justify-between"
         style={{ flexWrap: "wrap", gap: 12 }}
@@ -118,18 +117,7 @@ export default function Templates() {
         </div>
       </div>
 
-      {error && (
-        <div className="apple-error mb-6 flex items-center justify-between">
-          <span>{error}</span>
-          <button
-            className="apple-link"
-            style={{ fontSize: 12 }}
-            onClick={fetchTemplates}
-          >
-            Retry
-          </button>
-        </div>
-      )}
+      {error && <InlineError error={error} onRetry={fetchTemplates} />}
 
       {!loading && filtered.length === 0 ? (
         <EmptyState
@@ -230,6 +218,6 @@ export default function Templates() {
         onCancel={() => setDeleteTarget(null)}
         isLoading={deleting}
       />
-    </motion.div>
+    </AnimatedPage>
   );
 }

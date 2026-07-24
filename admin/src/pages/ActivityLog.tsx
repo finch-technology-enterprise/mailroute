@@ -4,6 +4,8 @@ import { get } from "../api/client";
 import type { ApiResponse } from "../types";
 import PushSetup from "../components/PushSetup";
 import EmptyState from "../components/EmptyState";
+import AnimatedPage from "../components/AnimatedPage";
+import Skeleton from "../components/Skeleton";
 
 interface LogEntry {
   id: string;
@@ -69,11 +71,7 @@ export default function ActivityLog() {
   });
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.2 }}
-    >
+    <AnimatedPage>
       <div className="mb-6">
         <h1 className="mb-1">Activity Log</h1>
         <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>
@@ -125,16 +123,7 @@ export default function ActivityLog() {
 
       {loading ? (
         <div className="card p-6 flex flex-col gap-4">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="flex items-center gap-3">
-              <div className="skeleton-shimmer" style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0 }} />
-              <div className="flex-1">
-                <div className="skeleton-shimmer" style={{ height: 13, width: "60%", marginBottom: 6 }} />
-                <div className="skeleton-shimmer" style={{ height: 11, width: "40%" }} />
-              </div>
-              <div className="skeleton-shimmer" style={{ width: 40, height: 11, flexShrink: 0 }} />
-            </div>
-          ))}
+          <Skeleton count={5} height={28} />
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState
@@ -192,6 +181,6 @@ export default function ActivityLog() {
         </div>
       )}
       <PushSetup />
-    </motion.div>
+    </AnimatedPage>
   );
 }

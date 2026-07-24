@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { useToast } from "../components/Toast";
+import AnimatedPage from "../components/AnimatedPage";
 import { changePassword } from "../api/auth";
 
 export default function ChangePassword() {
@@ -39,7 +40,7 @@ export default function ChangePassword() {
   };
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
+    <AnimatedPage>
       <h1 className="mb-1">Settings</h1>
       <p style={{ color: "var(--text-secondary)", fontSize: 14, marginBottom: 28 }}>
         Change your account password
@@ -100,6 +101,6 @@ export default function ChangePassword() {
           </form>
         </div>
       </div>
-    </motion.div>
+    </AnimatedPage>
   );
 }

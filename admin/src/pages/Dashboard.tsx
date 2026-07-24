@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import { getStats } from "../api/admin";
+import AnimatedPage from "../components/AnimatedPage";
+import Skeleton from "../components/Skeleton";
 import { get } from "../api/client";
 import type { Stats, ApiResponse } from "../types";
 import Icon from "../components/Icon";
@@ -87,7 +89,7 @@ export default function Dashboard() {
   }, []);
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
+    <AnimatedPage>
       <div className="mb-8">
         <h1 className="mb-1">Dashboard</h1>
         <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>
@@ -106,10 +108,7 @@ export default function Dashboard() {
             ))}
           </div>
           <div className="card p-6">
-            <div className="skeleton-shimmer" style={{ height: 14, width: "30%", marginBottom: 16 }} />
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="skeleton-shimmer" style={{ height: 12, width: "80%", marginBottom: 10 }} />
-            ))}
+            <Skeleton count={4} />
           </div>
         </div>
       ) : (
@@ -193,6 +192,6 @@ export default function Dashboard() {
           )}
         </div>
       )}
-    </motion.div>
+    </AnimatedPage>
   );
 }
