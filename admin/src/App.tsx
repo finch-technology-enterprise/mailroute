@@ -9,7 +9,6 @@ const VendorsPage = lazy(() => import("./pages/Vendors"));
 const TemplatesPage = lazy(() => import("./pages/Templates"));
 const TestSendPage = lazy(() => import("./pages/TestSend"));
 const ActivityLogPage = lazy(() => import("./pages/ActivityLog"));
-const ConfigPage = lazy(() => import("./pages/Config"));
 const ApiKeysPage = lazy(() => import("./pages/ApiKeys"));
 const TenantSettingsPage = lazy(() => import("./pages/TenantSettings"));
 const LoginPage = lazy(() => import("./pages/Login"));
