@@ -12,6 +12,7 @@ export const Tenant = sqliteTable("tenants", {
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
   apiAuthKeyHash: text("api_auth_key_hash"),
+  settings: text("settings").notNull().default("{}"),
   createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
   updatedAt: text("updated_at").$defaultFn(() => new Date().toISOString()),
 });
