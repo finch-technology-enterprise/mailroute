@@ -122,6 +122,7 @@ function SettingsPopover({ onClose }: { onClose: () => void }) {
   const [dark, setDark] = useState(
     () => document.documentElement.getAttribute("data-theme") === "dark",
   );
+  const [showDisconnect, setShowDisconnect] = useState(false);
 
   const toggleDark = () => {
     const next = !dark;
@@ -229,14 +230,18 @@ function SettingsPopover({ onClose }: { onClose: () => void }) {
         </motion.button>
         <motion.button
           className="apple-btn apple-btn-secondary"
-          style={{ fontSize: 13, padding: "6px 14px", flex: 1, minHeight: 36 }}
+          style={{ fontSize: 13, padding: "6px 14px", flex: 1, minHeight: 36, borderColor: showDisconnect ? "var(--red)" : undefined, color: showDisconnect ? "var(--red)" : undefined }}
           onClick={() => {
-            clearAuthKey();
-            window.location.reload();
+            if (showDisconnect) {
+              clearAuthKey();
+              window.location.reload();
+            } else {
+              setShowDisconnect(true);
+            }
           }}
           whileTap={{ scale: 0.97 }}
         >
-          Disconnect
+          {showDisconnect ? "Confirm disconnect" : "Disconnect"}
         </motion.button>
       </div>
     </motion.div>
@@ -456,7 +461,7 @@ export default function Layout() {
               fontWeight: 500,
               transition: "color 0.15s",
             }}
-            title="Sign out"
+            aria-label="Sign out"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
@@ -466,6 +471,7 @@ export default function Layout() {
           <motion.button
             onClick={() => setCollapsed(!collapsed)}
             whileTap={{ scale: 0.95 }}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             style={{
               width: "100%",
               padding: collapsed ? "10px 0" : "8px 10px",
@@ -482,12 +488,11 @@ export default function Layout() {
               fontWeight: 500,
               transition: "color 0.15s",
             }}
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: collapsed ? "rotate(180deg)" : "none", flexShrink: 0 }}>
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="9" y1="3" x2="9" y2="21" />
             </svg>
-            {!collapsed && "Collapse"}
+            {!collapsed && "Collapse sidebar"}
           </motion.button>
         </div>
       </nav>

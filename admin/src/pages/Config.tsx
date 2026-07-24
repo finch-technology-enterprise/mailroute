@@ -298,7 +298,7 @@ export default function Config() {
                                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
                               </svg>
                             )}
-                            <span className="truncate-text" style={{ maxWidth: 200 }}>{row.key}</span>
+                            <span className="truncate-text" style={{ maxWidth: 200 }} title={row.key}>{row.key}</span>
                           </div>
                         </td>
                         <td data-label="Value" style={{ color: "var(--text-secondary)", fontSize: 13, wordBreak: "break-all" }}>
@@ -312,7 +312,7 @@ export default function Config() {
                             </div>
                           ) : (
                             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                              <span className={isRevealed ? "" : "truncate-text"} style={{ maxWidth: 260, display: "inline-block" }}>
+                              <span className={isRevealed ? "" : "truncate-text"} style={{ maxWidth: 260, display: "inline-block" }} title={row.value}>
                                 {row.encrypted && !isRevealed ? row.value : row.value}
                               </span>
                               <button className="apple-link" style={{ fontSize: 11, opacity: 0.4, padding: "2px", flexShrink: 0 }} onClick={() => copyToClipboard(row.value)} title="Copy value">
