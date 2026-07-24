@@ -22,17 +22,6 @@ interface NewConfig {
 
 const emptyNewConfig: NewConfig = { service: "", key: "", value: "" };
 
-function formatTime(iso: string): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  const now = new Date();
-  const diff = now.getTime() - d.getTime();
-  if (diff < 60000) return "just now";
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
-  return d.toLocaleDateString();
-}
-
 const SECRET_PATTERN = /token|key|secret|pass|auth|cred/i;
 
 export default function Config() {
@@ -269,11 +258,10 @@ export default function Config() {
               </div>
               <table className="apple-table table-as-cards">
                 <thead>
-                  <tr>
-                    <th>Key</th>
-                    <th>Value</th>
-                    <th style={{ width: 60 }}>Updated</th>
-                  </tr>
+                    <tr>
+                      <th>Key</th>
+                      <th>Value</th>
+                    </tr>
                 </thead>
                 <tbody>
                   {items.map((row) => {
@@ -315,12 +303,9 @@ export default function Config() {
                             </div>
                           )}
                         </td>
-                        <td data-label="Updated" style={{ fontSize: 11, color: "var(--text-tertiary)", whiteSpace: "nowrap" }}>
-                          {row.updated_at && formatTime(row.updated_at)}
-                        </td>
                       </tr>
                       <tr key={`${id}-actions`} className="no-card" style={{ borderBottom: "1px solid var(--border)" }}>
-                        <td colSpan={3} style={{ padding: "4px 16px 12px", border: "none" }}>
+                        <td colSpan={2} style={{ padding: "4px 16px 12px", border: "none" }}>
                           {isEditing ? null : (
                             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                               <button className="apple-btn" style={{ fontSize: 12, padding: "4px 10px", minHeight: 28, background: "var(--bg-primary)", color: "var(--text-primary)", border: "1px solid var(--border)" }} onClick={() => { setEditing({ service: row.service, key: row.key }); setEditValue(row.value); }}>Edit</button>
