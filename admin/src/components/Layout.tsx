@@ -38,14 +38,11 @@ const navItems = [
 
 function AuthScreen() {
   const [keyValue, setKeyValue] = useState("");
-  const [loading, setLoading] = useState(false);
 
   const handleSubmit = () => {
     if (keyValue) {
-      setLoading(true);
       localStorage.setItem("mailroute_api_key", keyValue);
-      setKeyValue("");
-      setLoading(false);
+      window.location.reload();
     }
   };
 
@@ -116,11 +113,10 @@ function AuthScreen() {
           <motion.button
             className="apple-btn apple-btn-primary w-full justify-center"
             onClick={handleSubmit}
-            disabled={loading}
             whileTap={{ scale: 0.97 }}
             transition={{ type: "spring", bounce: 0, duration: 0.15 }}
           >
-            {loading ? "Connecting..." : "Connect"}
+            Connect
           </motion.button>
         </div>
       </motion.div>
