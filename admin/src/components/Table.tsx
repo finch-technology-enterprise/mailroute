@@ -13,6 +13,7 @@ interface TableProps<T> {
   data: T[];
   keyExtractor: (row: T) => string;
   isLoading?: boolean;
+  rowProps?: (row: T, index: number) => Record<string, unknown>;
 }
 
 function SkeletonRow({ columns }: { columns: number }) {
@@ -39,6 +40,7 @@ export default function Table<T>({
   data,
   keyExtractor,
   isLoading,
+  rowProps,
 }: TableProps<T>) {
   if (isLoading) {
     return (
@@ -90,6 +92,7 @@ export default function Table<T>({
                 }}
                 className="card-hover"
                 style={{ background: "transparent", cursor: "default", transition: "background 0.15s ease" }}
+                {...(rowProps?.(row, i) as Record<string, unknown>)}
               >
                 {columns.map((col) => (
                   <td key={col.key} className={col.className}>
