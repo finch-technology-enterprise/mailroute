@@ -870,6 +870,10 @@ body:has(.modal-overlay) .bottom-nav {
 
 /* Mobile card table */
 @media (max-width: 768px) {
+  .table-as-cards {
+    min-width: 0 !important;
+    width: 100%;
+  }
   .table-as-cards thead {
     display: none;
   }
