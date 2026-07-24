@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { get } from "../api/client";
 import type { ApiResponse } from "../types";
 import PushSetup from "../components/PushSetup";
+import EmptyState from "../components/EmptyState";
 
 interface LogEntry {
   id: string;
@@ -136,31 +137,10 @@ export default function ActivityLog() {
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="card flex flex-col items-center justify-center px-8 py-20 text-center">
-          <div
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 24,
-              background: "var(--border)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: 20,
-              color: "var(--text-tertiary)",
-            }}
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-            </svg>
-          </div>
-          <h3 className="mb-2 text-lg" style={{ fontWeight: 600 }}>
-            {search ? "No matching activity" : "No activity yet"}
-          </h3>
-          <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>
-            {search ? "Try a different search term." : "Activity from the app will appear here."}
-          </p>
-        </div>
+        <EmptyState
+          title={search ? "No matching activity" : "No activity yet"}
+          description={search ? "Try a different search term." : "Activity from the app will appear here."}
+        />
       ) : (
         <div className="card overflow-hidden">
           {filtered.map((log, i) => {

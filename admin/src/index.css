@@ -502,6 +502,12 @@ textarea.apple-input {
   background: var(--red-bg);
 }
 
+/* Global active press — replaces whileTap duplication */
+.apple-btn:active,
+.apple-link:active {
+  transform: scale(0.97);
+}
+
 /* Checkbox */
 .apple-checkbox {
   appearance: none;
