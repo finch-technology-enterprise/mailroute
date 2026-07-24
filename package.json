@@ -1,7 +1,9 @@
 {
   "name": "mailroute",
   "license": "MIT",
+  "private": true,
   "type": "module",
+  "workspaces": ["admin"],
   "engines": {
     "node": ">=22.0.0"
   },
@@ -13,10 +15,10 @@
     "build": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "ci": "cd admin && npm ci && npm run build && cd .. && npm run build",
+    "ci": "npm run build:admin && npm run build",
     "format": "prettier --write .",
-    "dev:admin": "cd admin && npm run dev",
-    "build:admin": "cd admin && npm run build",
+    "dev:admin": "npm run dev --workspace=admin",
+    "build:admin": "npm run build --workspace=admin",
     "migrate:local": "wrangler d1 execute D1_DATABASE --local --file",
     "migrate:remote": "wrangler d1 execute D1_DATABASE --remote --file",
     "db:seed:local": "wrangler d1 execute D1_DATABASE --local --file scripts/seed-email-vendors.sql",
@@ -36,5 +38,8 @@
     "typescript": "^7.0.2",
     "vitest": "^4.1.10",
     "wrangler": "^4.112.0"
+  },
+  "overrides": {
+    "glob": "13.0.6"
   }
 }

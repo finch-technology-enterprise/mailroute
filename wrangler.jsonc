@@ -27,9 +27,6 @@
       }
     }
   ],
-  "build": {
-    "command": "npm run build:admin && npm run build"
-  },
   "vars": {
     "JWT_SECRET": "dev-jwt-secret-do-not-use-in-prod-abc123xyz"
   },
