@@ -97,11 +97,11 @@ export default function Table<T>({
                 style={{ background: "transparent", cursor: "default", transition: "background 0.15s ease" }}
                 {...(rowProps?.(row, i) as Record<string, unknown>)}
               >
-                {columns.map((col) => (
-                  <td key={col.key} className={col.className}>
-                    {col.render(row)}
-                  </td>
-                ))}
+                  {columns.map((col) => (
+                    <td key={col.key} className={col.className} data-label={col.header}>
+                      {col.render(row)}
+                    </td>
+                  ))}
               </motion.tr>
             ))}
           </tbody>
