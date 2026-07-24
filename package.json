@@ -13,7 +13,7 @@
     "build": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "ci": "npm ci && cd admin && npm ci && npm run build && cd .. && npm run build",
+    "ci": "cd admin && npm ci && npm run build && cd .. && npm run build",
     "format": "prettier --write .",
     "dev:admin": "cd admin && npm run dev",
     "build:admin": "cd admin && npm run build",
@@ -28,6 +28,7 @@
     "hono": "^4.12.27",
     "zod": "^4.4.3"
   },
+
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.18.8",
     "@cloudflare/workers-types": "^5.20260719.1",
