@@ -33,6 +33,58 @@ const defaultReplacements: Record<string, string> = {
   year: "2026",
 };
 
+const sectionStyle: React.CSSProperties = {
+  marginBottom: 28,
+};
+
+const sectionTitleStyle: React.CSSProperties = {
+  fontSize: 12,
+  fontWeight: 600,
+  letterSpacing: "0.05em",
+  textTransform: "uppercase",
+  color: "var(--text-secondary)",
+  marginBottom: 10,
+  paddingLeft: 2,
+};
+
+const fieldGroupStyle: React.CSSProperties = {
+  background: "var(--bg-secondary)",
+  borderRadius: 12,
+  border: "1px solid var(--border)",
+  overflow: "hidden",
+};
+
+const fieldRowStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 2,
+};
+
+const fieldLabelStyle: React.CSSProperties = {
+  fontSize: 13,
+  fontWeight: 500,
+  color: "var(--text-secondary)",
+  padding: "12px 14px 0",
+};
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  border: "none",
+  background: "transparent",
+  padding: "0 14px 12px",
+  fontSize: 15,
+  fontFamily: "var(--font-sans)",
+  color: "var(--text-primary)",
+  outline: "none",
+  minHeight: 22,
+};
+
+const separatorStyle: React.CSSProperties = {
+  height: 1,
+  background: "var(--border)",
+  margin: "0 14px",
+};
+
 export default function TestSend() {
   const [to, setTo] = useState("");
   const [subject, setSubject] = useState("");
@@ -93,9 +145,7 @@ export default function TestSend() {
   const handleTemplateSelect = (slug: string) => {
     setSelectedSlug(slug);
     if (slug) loadTemplate(slug);
-    else {
-      setReplacements({});
-    }
+    else setReplacements({});
   };
 
   const handleReplacementChange = (key: string, value: string) => {
@@ -134,126 +184,184 @@ export default function TestSend() {
       animate={{ opacity: 1 }}
       transition={{ type: "spring", bounce: 0, duration: 0.35 }}
     >
-      <h1 className="mb-8">Test Send</h1>
-
-      <div className="card p-8" style={{ width: "100%", maxWidth: 600 }}>
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="apple-label">To</label>
-            <input
-              type="email"
-              className="apple-input"
-              placeholder="you@example.com"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-              required
-            />
-          </div>
-
-          <div>
-            <label className="apple-label">Template</label>
-            <select
-              className="apple-input"
-              value={selectedSlug}
-              onChange={(e) => handleTemplateSelect(e.target.value)}
-              style={{ fontSize: 14, appearance: "auto", cursor: "pointer" }}
-            >
-              <option value="">No template (write your own)</option>
-              {templates.map((t) => (
-                <option key={t.id} value={t.slug}>{t.slug}</option>
-              ))}
-            </select>
-          </div>
-
-          {placeholders.length > 0 && (
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 8,
-                padding: "14px 16px",
-                background: "var(--bg-secondary)",
-                borderRadius: 10,
-              }}
-            >
-              <span style={{ fontSize: 12, color: "var(--text-secondary)", width: "100%", marginBottom: 2 }}>
-                Template placeholders
-              </span>
-              {placeholders.map((key) => (
-                <div key={key} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  <code style={{ fontSize: 11, color: "var(--text-secondary)" }}>{`{{${key}}}`}</code>
-                  <input
-                    className="apple-input code"
-                    value={replacements[key] || ""}
-                    onChange={(e) => handleReplacementChange(key, e.target.value)}
-                    style={{ width: 140, fontSize: 12, padding: "4px 8px", minHeight: 28 }}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div>
-            <label className="apple-label">Subject</label>
-            <input
-              className="apple-input"
-              placeholder={currentTemplate ? "Subject from template" : "Test email"}
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              required
-            />
-          </div>
-
-          <div>
-            <label className="apple-label">Vendor</label>
-            <select
-              className="apple-input"
-              value={vendor}
-              onChange={(e) => setVendor(e.target.value)}
-              style={{ fontSize: 14, appearance: "auto", cursor: "pointer" }}
-            >
-              <option value="auto">Auto (priority-based failover)</option>
-              {vendors.filter((v) => v.enabled).map((v) => (
-                <option key={v.id} value={v.name}>{v.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="apple-label">Content (HTML)</label>
-            <RichEditor
-              content={content}
-              onChange={setContent}
-              minHeight={280}
-            />
-          </div>
-
-          {error && <div className="apple-error">{error}</div>}
-
-          <motion.button
-            type="submit"
-            className="apple-btn apple-btn-primary"
-            disabled={sending}
-            whileTap={{ scale: 0.97 }}
-            transition={{ type: "spring", bounce: 0, duration: 0.12 }}
-          >
-            {sending ? "Sending..." : "Send Test Email"}
-          </motion.button>
-        </form>
+      <div style={{ maxWidth: 600, margin: "0 auto" }}>
+        <div style={{ ...sectionStyle, textAlign: "center" }}>
+          <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: "-0.02em", marginBottom: 4 }}>Test Send</h1>
+          <p style={{ fontSize: 14, color: "var(--text-secondary)", margin: 0 }}>
+            Send a test email to verify delivery
+          </p>
+        </div>
 
         {result && (
           <motion.div
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ type: "spring", bounce: 0, duration: 0.3 }}
-            className={result.success ? "apple-success mt-6" : "apple-error mt-6"}
+            style={{
+              padding: "12px 16px",
+              borderRadius: 12,
+              marginBottom: 20,
+              fontSize: 14,
+              lineHeight: 1.4,
+              ...(result.success
+                ? { background: "rgba(52, 199, 89, 0.12)", color: "#1d7a3a" }
+                : { background: "rgba(255, 69, 58, 0.1)", color: "#c0392b" }),
+            }}
           >
-            <p style={{ fontWeight: 600, marginBottom: 2 }}>
-              {result.success ? "Sent successfully" : "Send failed"}
-            </p>
-            <p style={{ opacity: 0.8 }}>{result.message}</p>
+            <div style={{ fontWeight: 600, marginBottom: 1 }}>
+              {result.success ? "Sent" : "Failed"}
+            </div>
+            <div style={{ opacity: 0.8 }}>{result.message}</div>
           </motion.div>
         )}
+
+        <form onSubmit={handleSubmit}>
+          <div style={sectionStyle}>
+            <div style={sectionTitleStyle}>Recipient</div>
+            <div style={fieldGroupStyle}>
+              <div style={fieldRowStyle}>
+                <label style={fieldLabelStyle}>To</label>
+                <input
+                  type="email"
+                  placeholder="you@example.com"
+                  value={to}
+                  onChange={(e) => setTo(e.target.value)}
+                  required
+                  style={inputStyle}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div style={sectionStyle}>
+            <div style={sectionTitleStyle}>Content</div>
+            <div style={fieldGroupStyle}>
+              <div style={fieldRowStyle}>
+                <label style={fieldLabelStyle}>Template</label>
+                <select
+                  value={selectedSlug}
+                  onChange={(e) => handleTemplateSelect(e.target.value)}
+                  style={{
+                    ...inputStyle,
+                    appearance: "auto",
+                    cursor: "pointer",
+                    paddingBottom: 12,
+                  }}
+                >
+                  <option value="">Custom (write your own)</option>
+                  {templates.map((t) => (
+                    <option key={t.id} value={t.slug}>{t.slug}</option>
+                  ))}
+                </select>
+              </div>
+
+              {placeholders.length > 0 && (
+                <>
+                  {placeholders.map((key, i) => (
+                    <div key={key}>
+                      {i === 0 && <div style={separatorStyle} />}
+                      <div style={fieldRowStyle}>
+                        <label style={{ ...fieldLabelStyle, paddingTop: 10 }}>{`{{${key}}}`}</label>
+                        <input
+                          value={replacements[key] || ""}
+                          onChange={(e) => handleReplacementChange(key, e.target.value)}
+                          placeholder={`Value for ${key}`}
+                          style={{ ...inputStyle, paddingBottom: 10, fontSize: 14 }}
+                          className="code"
+                        />
+                      </div>
+                      {i < placeholders.length - 1 && <div style={separatorStyle} />}
+                    </div>
+                  ))}
+                </>
+              )}
+
+              <div style={separatorStyle} />
+
+              <div style={fieldRowStyle}>
+                <label style={fieldLabelStyle}>Subject</label>
+                <input
+                  placeholder={currentTemplate ? "Subject from template" : "Test email"}
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  required
+                  style={inputStyle}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div style={sectionStyle}>
+            <div style={sectionTitleStyle}>Advanced</div>
+            <div style={fieldGroupStyle}>
+              <div style={fieldRowStyle}>
+                <label style={fieldLabelStyle}>Vendor</label>
+                <select
+                  value={vendor}
+                  onChange={(e) => setVendor(e.target.value)}
+                  style={{
+                    ...inputStyle,
+                    appearance: "auto",
+                    cursor: "pointer",
+                    paddingBottom: 12,
+                  }}
+                >
+                  <option value="auto">Auto (priority-based failover)</option>
+                  {vendors.filter((v) => v.enabled).map((v) => (
+                    <option key={v.id} value={v.name}>{v.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div style={sectionStyle}>
+            <div style={sectionTitleStyle}>Message Body</div>
+            <RichEditor
+              content={content}
+              onChange={setContent}
+              minHeight={220}
+            />
+          </div>
+
+          {error && (
+            <div
+              style={{
+                padding: "10px 14px",
+                borderRadius: 10,
+                background: "rgba(255, 69, 58, 0.1)",
+                color: "#c0392b",
+                fontSize: 13,
+                marginBottom: 16,
+              }}
+            >
+              {error}
+            </div>
+          )}
+
+          <motion.button
+            type="submit"
+            disabled={sending}
+            whileTap={{ scale: 0.97 }}
+            transition={{ type: "spring", bounce: 0, duration: 0.12 }}
+            style={{
+              width: "100%",
+              padding: "14px 20px",
+              borderRadius: 12,
+              border: "none",
+              background: sending ? "var(--accent-dimmed, #0071e366)" : "var(--accent)",
+              color: "#fff",
+              fontSize: 16,
+              fontWeight: 600,
+              fontFamily: "var(--font-sans)",
+              cursor: sending ? "not-allowed" : "pointer",
+              letterSpacing: "-0.01em",
+              marginBottom: 40,
+            }}
+          >
+            {sending ? "Sending…" : "Send Test Email"}
+          </motion.button>
+        </form>
       </div>
     </motion.div>
   );
