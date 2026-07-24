@@ -120,15 +120,15 @@
   --sidebar-width: 240px;
 }
 
-/* Prevent any overflow/scroll that causes viewport dragging */
+/* Prevent horizontal overflow */
 html, body {
-  overflow-x: hidden;
   width: 100%;
   max-width: 100vw;
-  position: relative;
+}
+body {
+  overflow-x: hidden;
 }
 #root {
-  overflow-x: hidden;
   width: 100%;
 }
 
