@@ -391,24 +391,7 @@ export default function Layout() {
   useEffect(() => {
     const saved = localStorage.getItem("mailroute-theme");
     if (saved) document.documentElement.setAttribute("data-theme", saved);
-
-    const handler = (e: KeyboardEvent) => {
-      if (
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement ||
-        (e.target instanceof HTMLElement && e.target.isContentEditable)
-      )
-        return;
-      if (e.key === "n") navigate("/vendors");
-      if (e.key === "t") navigate("/templates");
-      if (e.key === "s") navigate("/test-send");
-      if (e.key === "d") navigate("/");
-      if (e.key === "a") navigate("/activity");
-      if (e.key === "c") navigate("/config");
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [navigate]);
+  }, []);
 
   if (!hasAuthKey()) return <AuthScreen />;
 

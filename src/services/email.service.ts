@@ -68,9 +68,6 @@ export class EmailService {
             toEmail: payload.to,
             subject: payload.subject,
             status: "sent",
-            error: null,
-            templateSlug: null,
-            durationMs: null,
             createdAt: new Date().toISOString(),
           })
           .execute();
@@ -93,8 +90,6 @@ export class EmailService {
             subject: payload.subject,
             status: "failed",
             error: message,
-            templateSlug: null,
-            durationMs: null,
             createdAt: new Date().toISOString(),
           })
           .execute();
