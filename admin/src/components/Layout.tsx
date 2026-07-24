@@ -243,7 +243,11 @@ function BottomNav() {
               onClick={() => navigate(item.to)}
               whileTap={{ scale: 0.93 }}
               transition={{ type: "spring", bounce: 0, duration: 0.12 }}
-              style={{ position: "relative" }}
+              style={{
+                position: "relative",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
             >
               {isActive && (
                 <motion.span
@@ -263,6 +267,7 @@ function BottomNav() {
                   fontWeight: isActive ? 600 : 500,
                   color: isActive ? "var(--accent)" : "var(--text-tertiary)",
                   lineHeight: 1.2,
+                  textAlign: "center",
                 }}
               >
                 {item.label}

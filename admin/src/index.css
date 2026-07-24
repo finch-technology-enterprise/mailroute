@@ -552,6 +552,7 @@ textarea.apple-input {
   padding-bottom: var(--sab);
   display: none;
   pointer-events: auto;
+  width: 100%;
 }
 
 body:has(.modal-overlay) .bottom-nav {
@@ -564,6 +565,7 @@ body:has(.modal-overlay) .bottom-nav {
   height: var(--bottom-nav-height);
   padding: 4px 6px;
   gap: 1px;
+  width: 100%;
 }
 
 .bottom-nav-item {
