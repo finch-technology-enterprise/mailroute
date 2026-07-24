@@ -315,14 +315,40 @@ export default function TestSend() {
             </div>
           </div>
 
-          <div style={sectionStyle}>
-            <div style={sectionTitleStyle}>Message Body</div>
-            <RichEditor
-              content={content}
-              onChange={setContent}
-              minHeight={220}
-            />
-          </div>
+          {currentTemplate ? (
+            <div style={sectionStyle}>
+              <div style={sectionTitleStyle}>Preview</div>
+              <div
+                style={{
+                  border: "1px solid var(--border)",
+                  borderRadius: 12,
+                  overflow: "hidden",
+                  background: "#fff",
+                }}
+              >
+                <iframe
+                  srcDoc={content}
+                  title="Template preview"
+                  sandbox=""
+                  style={{
+                    width: "100%",
+                    height: 400,
+                    border: "none",
+                    display: "block",
+                  }}
+                />
+              </div>
+            </div>
+          ) : (
+            <div style={sectionStyle}>
+              <div style={sectionTitleStyle}>Message Body</div>
+              <RichEditor
+                content={content}
+                onChange={setContent}
+                minHeight={220}
+              />
+            </div>
+          )}
 
           {error && (
             <div
