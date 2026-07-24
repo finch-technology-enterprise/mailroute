@@ -56,47 +56,38 @@ function AuthScreen() {
       }}
     >
       <motion.div
-        initial={{ opacity: 0, y: 20, scale: 0.97 }}
+        initial={{ opacity: 0, y: 24, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ type: "spring", bounce: 0, duration: 0.5 }}
-        className="card p-10 w-full max-w-sm mx-4"
+        transition={{ type: "spring", bounce: 0, duration: 0.6 }}
+        className="w-full max-w-sm mx-4"
+        style={{
+          background: "var(--bg-secondary)",
+          borderRadius: 20,
+          border: "1px solid var(--border)",
+          boxShadow: "var(--shadow-xl)",
+          padding: "32px 28px",
+        }}
       >
         <div
           style={{
-            width: 48,
-            height: 48,
-            borderRadius: 14,
-            background: "var(--accent)",
+            width: 56,
+            height: 56,
+            borderRadius: 16,
+            background: "linear-gradient(135deg, var(--accent), #5ac8fa)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             marginBottom: 24,
+            boxShadow: "0 4px 12px rgba(0, 113, 227, 0.3)",
           }}
         >
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="white"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <rect x="2" y="4" width="20" height="16" rx="2" />
             <polyline points="2,4 12,13 22,4" />
           </svg>
         </div>
-        <h1
-          className="mb-1"
-          style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.03em" }}
-        >
-          mailroute
-        </h1>
-        <p
-          className="mb-8"
-          style={{ color: "var(--text-secondary)", fontSize: 14 }}
-        >
+        <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: "-0.03em", marginBottom: 4 }}>mailroute</h1>
+        <p style={{ color: "var(--text-secondary)", fontSize: 14, marginBottom: 28, lineHeight: 1.5 }}>
           Enter your API auth key to continue.
         </p>
         <div className="flex flex-col gap-3">
@@ -109,12 +100,14 @@ function AuthScreen() {
             onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
             autoFocus
             autoComplete="off"
+            style={{ fontSize: 16, padding: "12px 14px", borderRadius: 12 }}
           />
           <motion.button
             className="apple-btn apple-btn-primary w-full justify-center"
             onClick={handleSubmit}
             whileTap={{ scale: 0.97 }}
-            transition={{ type: "spring", bounce: 0, duration: 0.15 }}
+            transition={{ type: "spring", bounce: 0, duration: 0.12 }}
+            style={{ padding: "12px 18px", borderRadius: 12, fontSize: 15 }}
           >
             Connect
           </motion.button>
@@ -356,22 +349,34 @@ function BottomNav() {
             <button
               key={item.to}
               type="button"
-              className={`bottom-nav-item ${isActive ? "active" : ""}`}
+              className="bottom-nav-item"
               onClick={() => navigate(item.to)}
+              style={{ position: "relative" }}
             >
-              <motion.span
-                className="bottom-nav-icon"
-                dangerouslySetInnerHTML={{ __html: item.icon }}
-                animate={{ scale: isActive ? 1.05 : 1 }}
-                transition={{ type: "spring", bounce: 0.2, duration: 0.3 }}
-              />
-              <motion.span
-                animate={{ y: isActive ? -1 : 0 }}
-                transition={{ type: "spring", bounce: 0, duration: 0.2 }}
-                style={{ fontSize: 11, fontWeight: isActive ? 600 : 500 }}
+              {isActive && (
+                <motion.span
+                  layoutId="bottom-nav-pill"
+                  className="bottom-nav-pill"
+                  transition={{ type: "spring", bounce: 0, duration: 0.35 }}
+                />
+              )}
+              <span className="bottom-nav-icon" style={{ position: "relative", zIndex: 1 }}>
+                <span
+                  dangerouslySetInnerHTML={{ __html: item.icon }}
+                  style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", color: isActive ? "var(--accent)" : undefined }}
+                />
+              </span>
+              <span
+                style={{
+                  position: "relative",
+                  zIndex: 1,
+                  fontSize: 11,
+                  fontWeight: isActive ? 600 : 500,
+                  color: isActive ? "var(--accent)" : "var(--text-tertiary)",
+                }}
               >
                 {item.label}
-              </motion.span>
+              </span>
             </button>
           );
         })}

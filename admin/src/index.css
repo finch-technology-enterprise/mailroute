@@ -770,6 +770,47 @@ body:has(.modal-overlay) .bottom-nav {
   }
 }
 
+/* Mobile card table */
+@media (max-width: 768px) {
+  .table-as-cards thead {
+    display: none;
+  }
+  .table-as-cards tbody,
+  .table-as-cards tr,
+  .table-as-cards td {
+    display: block;
+  }
+  .table-as-cards tr {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    padding: 16px;
+    margin-bottom: 10px;
+    box-shadow: var(--shadow-sm);
+  }
+  .table-as-cards tr:last-child {
+    margin-bottom: 0;
+  }
+  .table-as-cards td {
+    border: none !important;
+    padding: 4px 0 !important;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .table-as-cards td::before {
+    content: attr(data-label);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+  .table-as-cards .card-hover:hover {
+    transform: none;
+  }
+}
+
 /* Helper classes */
 .truncate-text {
   overflow: hidden;

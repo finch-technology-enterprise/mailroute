@@ -16,11 +16,11 @@ export default function StatusBadge({ enabled, onToggle }: StatusBadgeProps) {
     >
       <motion.span
         layout
-        transition={{ type: "spring", bounce: 0, duration: 0.2 }}
+        transition={{ type: "spring", bounce: 0.2, duration: 0.25 }}
         style={{
           display: "inline-block",
-          width: 6,
-          height: 6,
+          width: 7,
+          height: 7,
           borderRadius: "50%",
           background: enabled ? "var(--green)" : "var(--text-tertiary)",
         }}
