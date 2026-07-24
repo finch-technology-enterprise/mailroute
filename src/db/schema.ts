@@ -35,6 +35,18 @@ export const Session = sqliteTable("sessions", {
   createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
 });
 
+export const ApiKey = sqliteTable("api_keys", {
+  id: text("id").primaryKey(),
+  tenantId: text("tenant_id").notNull().references(() => Tenant.id),
+  name: text("name").notNull().default(""),
+  keyHash: text("key_hash").notNull(),
+  keyPrefix: text("key_prefix").notNull(),
+  lastUsedAt: text("last_used_at"),
+  expiresAt: text("expires_at"),
+  createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
+  revokedAt: text("revoked_at"),
+});
+
 // --- Existing tables with added tenant_id ---
 
 export const EmailTemplate = sqliteTable("email_templates", {

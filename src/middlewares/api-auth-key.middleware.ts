@@ -1,7 +1,9 @@
 import { Context, Next } from "hono";
 import { drizzle } from "drizzle-orm/d1";
+import { and, eq, isNull } from "drizzle-orm";
 import { ApiResponse } from "../utils/response.util";
-import { Tenant } from "../db/schema";
+import { ApiKey } from "../db/schema";
+import { hashApiKey } from "../lib/password";
 import type { AppEnv } from "../lib/app-env";
 
 export const ApiAuthKeyMiddleware = async (
@@ -12,27 +14,29 @@ export const ApiAuthKeyMiddleware = async (
 
   if (!providedKey) {
     return c.json(
-      ApiResponse(false, "Unauthorized: Missing Authorization header"),
+      ApiResponse(false, "Unauthorized: Missing X-API-AUTH-KEY header"),
       401,
     );
   }
 
-  const encoder = new TextEncoder();
-  const providedHash = await crypto.subtle.digest("SHA-256", encoder.encode(providedKey));
-  const providedB64 = btoa(String.fromCharCode(...new Uint8Array(providedHash)))
-    .replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  const keyHash = await hashApiKey(providedKey);
 
   const db = drizzle(c.env.D1_DATABASE);
-  const allTenants = await db.select({
-    id: Tenant.id,
-    apiAuthKeyHash: Tenant.apiAuthKeyHash,
-  }).from(Tenant).all();
+  const record = await db
+    .select({ id: ApiKey.id, tenantId: ApiKey.tenantId })
+    .from(ApiKey)
+    .where(and(eq(ApiKey.keyHash, keyHash), isNull(ApiKey.revokedAt)))
+    .get();
 
-  const matchedTenant = allTenants.find((t) => t.apiAuthKeyHash === providedB64);
-  if (!matchedTenant) {
+  if (!record) {
     return c.json(ApiResponse(false, "Unauthorized: Invalid API key"), 401);
   }
 
-  c.set("tenantId", matchedTenant.id);
+  c.set("tenantId", record.tenantId);
+
+  c.executionCtx.waitUntil(
+    db.update(ApiKey).set({ lastUsedAt: new Date().toISOString() }).where(eq(ApiKey.id, record.id)).execute().catch(() => {}),
+  );
+
   await next();
 };

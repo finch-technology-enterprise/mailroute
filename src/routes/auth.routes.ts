@@ -3,7 +3,7 @@ import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
-import { Tenant, User } from "../db/schema";
+import { Tenant, User, ApiKey } from "../db/schema";
 import { signJWT, verifyJWT } from "../lib/jwt";
 import { hashPassword, verifyPassword, generateApiKey, hashApiKey } from "../lib/password";
 import { ApiResponse } from "../utils/response.util";
@@ -40,11 +40,19 @@ auth.post("/signup", zValidator("json", signupSchema), async (c) => {
   const userId = crypto.randomUUID();
 
   await db.insert(Tenant).values({
-    id: tenantId, name: tenantName, slug: tenantSlug, apiAuthKeyHash: apiKeyHash,
+    id: tenantId, name: tenantName, slug: tenantSlug,
   }).execute();
 
   await db.insert(User).values({
     id: userId, tenantId, email, passwordHash, name, role: "admin",
+  }).execute();
+
+  await db.insert(ApiKey).values({
+    id: crypto.randomUUID(),
+    tenantId,
+    name: "Default",
+    keyHash: apiKeyHash,
+    keyPrefix: apiKey.slice(0, 10) + "...",
   }).execute();
 
   const token = await signJWT({ sub: userId, tenantId, role: "admin" }, c.env.JWT_SECRET);

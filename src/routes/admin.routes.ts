@@ -14,11 +14,13 @@ import {
   ActivityLog,
   ServiceConfig,
   PushSubscription,
+  ApiKey,
 } from "../db/schema";
 import { EmailService } from "../services/email.service";
 import { ConfigService } from "../services/config.service";
 import { EmailVendorService } from "../services/email-vendor.service";
 import { encrypt, decrypt, isEncrypted, generateSecret } from "../lib/crypto";
+import { generateApiKey, hashApiKey } from "../lib/password";
 import type { AppEnv } from "../lib/app-env";
 
 const admin = new Hono<AppEnv>();
@@ -434,6 +436,74 @@ admin.get("/logs", async (c) => {
     })),
   ].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 100);
   return c.json(ApiResponse(true, null, mapped));
+});
+
+// --- API Keys ---
+
+const createApiKeySchema = z.object({
+  name: z.string().min(1).max(128),
+});
+
+admin.get("/api-keys", async (c) => {
+  const db = drizzle(c.env.D1_DATABASE);
+  const tenantId = c.get("tenantId");
+  const keys = await db
+    .select({
+      id: ApiKey.id,
+      name: ApiKey.name,
+      keyPrefix: ApiKey.keyPrefix,
+      lastUsedAt: ApiKey.lastUsedAt,
+      createdAt: ApiKey.createdAt,
+      revokedAt: ApiKey.revokedAt,
+    })
+    .from(ApiKey)
+    .where(eq(ApiKey.tenantId, tenantId))
+    .orderBy(desc(ApiKey.createdAt))
+    .all();
+  return c.json(ApiResponse(true, null, keys));
+});
+
+admin.post("/api-keys", zValidator("json", createApiKeySchema), async (c) => {
+  const db = drizzle(c.env.D1_DATABASE);
+  const tenantId = c.get("tenantId");
+  const { name } = c.req.valid("json");
+
+  const rawKey = generateApiKey();
+  const keyHash = await hashApiKey(rawKey);
+  const keyPrefix = rawKey.slice(0, 10) + "...";
+
+  await db.insert(ApiKey).values({
+    id: crypto.randomUUID(),
+    tenantId,
+    name,
+    keyHash,
+    keyPrefix,
+  }).execute();
+
+  await logActivity(c.env, "api_key_created", `API key "${name}" created`, undefined, tenantId);
+
+  return c.json(ApiResponse(true, "API key created", { rawKey, name, keyPrefix }), 201);
+});
+
+admin.delete("/api-keys/:id", async (c) => {
+  const db = drizzle(c.env.D1_DATABASE);
+  const tenantId = c.get("tenantId");
+  const id = c.req.param("id");
+
+  const existing = await db
+    .select()
+    .from(ApiKey)
+    .where(and(eq(ApiKey.id, id), eq(ApiKey.tenantId, tenantId)))
+    .get();
+
+  if (!existing) return c.json(ApiResponse(false, "API key not found"), 404);
+  if (existing.revokedAt) return c.json(ApiResponse(false, "API key already revoked"));
+
+  await db.update(ApiKey).set({ revokedAt: new Date().toISOString() }).where(eq(ApiKey.id, id)).execute();
+
+  await logActivity(c.env, "api_key_revoked", `API key "${existing.name}" revoked`, undefined, tenantId);
+
+  return c.json(ApiResponse(true, "API key revoked"));
 });
 
 // --- Push Subscriptions ---
