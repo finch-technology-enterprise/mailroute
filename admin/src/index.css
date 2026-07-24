@@ -894,12 +894,14 @@ body:has(.modal-overlay) .bottom-nav {
     margin-bottom: 0;
   }
   .table-as-cards tr.no-card {
-    background: none !important;
-    border: none !important;
-    border-radius: 0 !important;
-    padding: 0 16px 12px;
+    background: var(--bg-secondary) !important;
+    border: 1px solid var(--border) !important;
+    border-top: none !important;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg) !important;
+    padding: 0 16px 14px;
     margin: 0 !important;
-    box-shadow: none !important;
+    margin-top: -1px !important;
+    box-shadow: var(--shadow-sm) !important;
   }
   .table-as-cards tr.no-card td {
     padding: 6px 0 0 !important;

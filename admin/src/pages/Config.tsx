@@ -263,9 +263,9 @@ export default function Config() {
         <div className="flex flex-col gap-5">
           {grouped.map(([service, items]) => (
             <div key={service} className="card overflow-hidden">
-              <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)", background: "var(--bg-primary)" }}>
-                <span className="code" style={{ fontSize: 13, fontWeight: 600 }}>{service}</span>
-                <span style={{ color: "var(--text-tertiary)", fontSize: 12, marginLeft: 8 }}>{items.length} key{items.length !== 1 ? "s" : ""}</span>
+              <div style={{ padding: "16px 18px 12px", borderBottom: "1px solid var(--border)", background: "var(--bg-primary)" }}>
+                <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: "-0.01em", color: "var(--text-secondary)", textTransform: "uppercase" }}>{service === "*" ? "Shared" : service}</span>
+                <span style={{ color: "var(--text-tertiary)", fontSize: 11, marginLeft: 8 }}>{items.length} key{items.length !== 1 ? "s" : ""}</span>
               </div>
               <table className="apple-table table-as-cards">
                 <thead>
@@ -320,15 +320,15 @@ export default function Config() {
                         </td>
                       </tr>
                       <tr key={`${id}-actions`} className="no-card" style={{ borderBottom: "1px solid var(--border)" }}>
-                        <td colSpan={3} style={{ padding: "6px 16px 10px", border: "none" }}>
+                        <td colSpan={3} style={{ padding: "4px 16px 12px", border: "none" }}>
                           {isEditing ? null : (
-                            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                              <button className="apple-link" onClick={() => { setEditing({ service: row.service, key: row.key }); setEditValue(row.value); }}>Edit</button>
+                            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                              <button className="apple-btn" style={{ fontSize: 12, padding: "4px 10px", minHeight: 28, background: "var(--bg-primary)", color: "var(--text-primary)", border: "1px solid var(--border)" }} onClick={() => { setEditing({ service: row.service, key: row.key }); setEditValue(row.value); }}>Edit</button>
                               {isSecretKey && !row.encrypted && (
-                                <button className="apple-link" onClick={() => handleEncrypt(row.service, row.key)} disabled={revealing.has(id)}>Encrypt</button>
+                                <button className="apple-btn" style={{ fontSize: 12, padding: "4px 10px", minHeight: 28, background: "var(--bg-primary)", color: "var(--accent)", border: "1px solid var(--border)" }} onClick={() => handleEncrypt(row.service, row.key)} disabled={revealing.has(id)}>Encrypt</button>
                               )}
                               {row.encrypted && (
-                                <button className="apple-link" onClick={() => {
+                                <button className="apple-btn" style={{ fontSize: 12, padding: "4px 10px", minHeight: 28, background: "var(--bg-primary)", color: "var(--accent)", border: "1px solid var(--border)" }} onClick={() => {
                                   if (isRevealed) {
                                     const masked = hiddenValues[id];
                                     if (masked) setRows((prev) => prev.map((r) => r.service === row.service && r.key === row.key ? { ...r, value: masked } : r));
@@ -339,11 +339,11 @@ export default function Config() {
                                 </button>
                               )}
                               {isSecretKey && (
-                                <button className="apple-link" onClick={() => handleRotate(row.service, row.key)} disabled={rotating.has(id)}>
+                                <button className="apple-btn" style={{ fontSize: 12, padding: "4px 10px", minHeight: 28, background: "var(--bg-primary)", color: "var(--orange)", border: "1px solid var(--border)" }} onClick={() => handleRotate(row.service, row.key)} disabled={rotating.has(id)}>
                                   {rotating.has(id) ? "..." : "Rotate"}
                                 </button>
                               )}
-                              <button className="apple-link apple-link-danger" onClick={() => setDeleteTarget({ service: row.service, key: row.key })}>Delete</button>
+                              <button className="apple-btn" style={{ fontSize: 12, padding: "4px 10px", minHeight: 28, background: "var(--bg-primary)", color: "var(--red)", border: "1px solid var(--border)" }} onClick={() => setDeleteTarget({ service: row.service, key: row.key })}>Delete</button>
                             </div>
                           )}
                         </td>
