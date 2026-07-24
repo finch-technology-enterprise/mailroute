@@ -420,7 +420,7 @@ export default function Config() {
               initial={{ opacity: 0, y: 20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              transition={{ type: "spring", bounce: 0, duration: 0.3 }}
+              transition={{ type: "spring", bounce: 0, duration: 0.4 }}
               className="modal-surface"
               style={{ maxWidth: 480 }}
               onClick={(e) => e.stopPropagation()}

@@ -88,7 +88,8 @@ export default function Table<T>({
                   duration: 0.25,
                   delay: i * 0.03,
                 }}
-                style={{ background: "transparent" }}
+                className="card-hover"
+                style={{ background: "transparent", cursor: "default", transition: "background 0.15s ease" }}
               >
                 {columns.map((col) => (
                   <td key={col.key} className={col.className}>

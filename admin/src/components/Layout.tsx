@@ -417,7 +417,17 @@ export default function Layout() {
           paddingBottom: 40,
         }}
       >
-        <Outlet />
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ type: "spring", bounce: 0, duration: 0.35 }}
+          >
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       <BottomNav />

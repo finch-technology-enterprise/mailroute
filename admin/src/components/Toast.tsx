@@ -45,6 +45,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={{ toast }}>
       {children}
       <div
+        className="toast-container"
         style={{
           position: "fixed",
           top: 16,

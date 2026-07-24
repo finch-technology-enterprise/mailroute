@@ -27,7 +27,7 @@ function StatCard({
         duration: 0.4,
         delay: index * 0.08,
       }}
-      className="card p-7"
+      className="stat-card p-7"
     >
       <p
         className="text-sm font-medium"
@@ -87,7 +87,7 @@ export default function Dashboard() {
       {loading ? (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="card p-7">
+            <div key={i} className="stat-card p-7">
               <div
                 className="skeleton"
                 style={{
