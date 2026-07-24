@@ -70,7 +70,7 @@ export default function TestSend() {
     >
       <h1 className="mb-8">Test Send</h1>
 
-      <div className="card p-8" style={{ maxWidth: 600 }}>
+      <div className="card p-8" style={{ width: "100%", maxWidth: 600 }}>
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="apple-label">To</label>

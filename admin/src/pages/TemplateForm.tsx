@@ -82,7 +82,7 @@ export default function TemplateForm({
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ type: "spring", bounce: 0, duration: 0.4 }}
             className="modal-surface"
-            style={{ maxWidth: 600 }}
+            style={{ width: "100%", maxWidth: 600 }}
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="mb-6">
