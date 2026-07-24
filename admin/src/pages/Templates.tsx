@@ -5,6 +5,7 @@ import Table from "../components/Table";
 import EmptyState from "../components/EmptyState";
 import ConfirmDialog from "../components/ConfirmDialog";
 import TemplateForm from "./TemplateForm";
+import TemplatePreview from "../components/TemplatePreview";
 import {
   listTemplates,
   createTemplate,
@@ -22,6 +23,7 @@ export default function Templates() {
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Template | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [previewTarget, setPreviewTarget] = useState<Template | null>(null);
   const { toast } = useToast();
 
   const fetchTemplates = useCallback(async () => {
@@ -177,6 +179,12 @@ export default function Templates() {
                 <div className="flex justify-end gap-1">
                   <button
                     className="apple-link"
+                    onClick={() => setPreviewTarget(t)}
+                  >
+                    Preview
+                  </button>
+                  <button
+                    className="apple-link"
                     onClick={() => {
                       setEditingTemplate(t);
                       setFormOpen(true);
@@ -208,6 +216,11 @@ export default function Templates() {
           setFormOpen(false);
           setEditingTemplate(null);
         }}
+      />
+      <TemplatePreview
+        open={!!previewTarget}
+        template={previewTarget}
+        onClose={() => setPreviewTarget(null)}
       />
       <ConfirmDialog
         open={!!deleteTarget}
