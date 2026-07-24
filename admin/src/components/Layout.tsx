@@ -264,7 +264,7 @@ function BottomNav() {
   return (
     <nav className="bottom-nav">
       <div className="bottom-nav-inner">
-        {navItems.slice(0, 5).map((item) => {
+        {navItems.slice(0, 6).map((item) => {
           const isActive =
             activeTo === item.to ||
             (item.to !== "/" && activeTo.startsWith(item.to));
@@ -307,10 +307,10 @@ function BottomNav() {
           type="button"
           className="bottom-nav-item"
           onClick={() => { clearAuthKey(); window.location.reload(); }}
-          style={{ flex: "0 0 44px", minWidth: 44 }}
+          style={{ flex: "0 0 36px", minWidth: 36 }}
           aria-label="Sign out"
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--red)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--red)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
           </svg>
         </button>

@@ -673,13 +673,15 @@ body:has(.modal-overlay) .bottom-nav {
   .bottom-nav-inner {
     padding: 4px 4px;
     gap: 1px;
+    height: 56px;
   }
   .bottom-nav-item {
-    min-height: 40px;
+    min-height: 36px;
+    font-size: 10px;
   }
   .bottom-nav-icon span {
-    width: 20px !important;
-    height: 20px !important;
+    width: 18px !important;
+    height: 18px !important;
   }
   .apple-table {
     font-size: 13px;

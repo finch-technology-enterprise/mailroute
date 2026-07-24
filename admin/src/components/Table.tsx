@@ -14,6 +14,7 @@ interface TableProps<T> {
   keyExtractor: (row: T) => string;
   isLoading?: boolean;
   rowProps?: (row: T, index: number) => Record<string, unknown>;
+  className?: string;
 }
 
 function SkeletonRow({ columns }: { columns: number }) {
@@ -41,11 +42,13 @@ export default function Table<T>({
   keyExtractor,
   isLoading,
   rowProps,
+  className,
 }: TableProps<T>) {
+  const tblClass = "apple-table" + (className ? " " + className : "");
   if (isLoading) {
     return (
       <div className="card overflow-hidden">
-        <table className="apple-table">
+        <table className={tblClass}>
           <thead>
             <tr>
               {columns.map((col) => (
@@ -66,9 +69,9 @@ export default function Table<T>({
   }
 
   return (
-    <div className="card">
-      <div className="table-wrap">
-        <table className="apple-table">
+      <div className="card">
+        <div className="table-wrap">
+          <table className={tblClass}>
           <thead>
             <tr>
               {columns.map((col) => (

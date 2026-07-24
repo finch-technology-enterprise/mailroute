@@ -233,6 +233,7 @@ export default function Vendors() {
       ) : (
         <div onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
           <Table
+            className="table-as-cards"
             columns={dragColumns}
             data={filtered}
             keyExtractor={(v) => v.id}

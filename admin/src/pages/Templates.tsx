@@ -149,6 +149,7 @@ export default function Templates() {
         />
       ) : (
         <Table
+          className="table-as-cards"
           columns={[
             {
               key: "slug",
