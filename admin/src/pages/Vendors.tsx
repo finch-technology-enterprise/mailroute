@@ -132,13 +132,6 @@ export default function Vendors() {
       render: (v: Vendor) => <StatusBadge enabled={v.enabled} onToggle={() => handleToggle(v)} />,
     },
     {
-      key: "priority",
-      header: "Priority",
-      render: (v: Vendor) => (
-        <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}>{v.priority}</span>
-      ),
-    },
-    {
       key: "fromEmail",
       header: "From",
       render: (v: Vendor) => (
