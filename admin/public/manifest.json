@@ -1,5 +1,5 @@
 {
-  "name": "mailroute — Admin",
+  "name": "mailroute — Email Microservice Admin",
   "short_name": "mailroute",
   "description": "Multi-vendor email failover management",
   "start_url": "/admin/",
@@ -9,6 +9,9 @@
   "theme_color": "#f5f5f7",
   "background_color": "#f5f5f7",
   "categories": ["business", "utilities", "communication"],
+  "lang": "en",
+  "dir": "ltr",
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/admin/icon.svg",

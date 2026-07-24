@@ -77,3 +77,12 @@ export const ActivityLog = sqliteTable("activity_logs", {
 });
 
 export type ActivityLogRow = typeof ActivityLog.$inferSelect;
+
+export const PushSubscription = sqliteTable("push_subscriptions", {
+  id: text("id").primaryKey(),
+  endpoint: text("endpoint").notNull().unique(),
+  p256dhKey: text("p256dh_key").notNull(),
+  authKey: text("auth_key").notNull(),
+  userAgent: text("user_agent"),
+  createdAt: text("created_at").notNull(),
+});

@@ -13,6 +13,7 @@ import {
   SendLog,
   ActivityLog,
   ServiceConfig,
+  PushSubscription,
 } from "../db/schema";
 import { EmailService } from "../services/email.service";
 import { ConfigService } from "../services/config.service";
@@ -414,6 +415,36 @@ admin.get("/logs", async (c) => {
     })),
   ].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 100);
   return c.json(ApiResponse(true, null, mapped));
+});
+
+// --- Push Subscriptions ---
+
+admin.post("/push/subscribe", async (c) => {
+  const db = drizzle(c.env.D1_DATABASE);
+  const body = await c.req.json();
+  const { endpoint, keys } = body as { endpoint: string; keys: { p256dh: string; auth: string } };
+  if (!endpoint || !keys?.p256dh || !keys?.auth) {
+    return c.json(ApiResponse(false, "Invalid subscription"), 400);
+  }
+  const existing = await db.select().from(PushSubscription).where(eq(PushSubscription.endpoint, endpoint)).get();
+  if (existing) return c.json(ApiResponse(true, "Already subscribed"));
+  await db.insert(PushSubscription).values({
+    id: crypto.randomUUID(),
+    endpoint,
+    p256dhKey: keys.p256dh,
+    authKey: keys.auth,
+    userAgent: c.req.header("user-agent") || null,
+    createdAt: new Date().toISOString(),
+  }).execute();
+  return c.json(ApiResponse(true, "Subscribed"));
+});
+
+admin.delete("/push/subscribe", async (c) => {
+  const db = drizzle(c.env.D1_DATABASE);
+  const { endpoint } = await c.req.json() as { endpoint: string };
+  if (!endpoint) return c.json(ApiResponse(false, "Missing endpoint"), 400);
+  await db.delete(PushSubscription).where(eq(PushSubscription.endpoint, endpoint)).execute();
+  return c.json(ApiResponse(true, "Unsubscribed"));
 });
 
 export default admin;

@@ -6,6 +6,7 @@ import { LogToNewRelic } from "../utils/helpers.util";
 import { EmailVendorService } from "./email-vendor.service";
 import { SendLog } from "../db/schema";
 import { ADAPTERS } from "../vendors";
+import { sendPushNotification } from "./push.service";
 
 function redactError(msg: string): string {
   return msg.replace(/(token|key|secret|auth|password|api[_-]?key)[=:]\s*\S+/gi, "$1=[REDACTED]");
@@ -79,6 +80,11 @@ export class EmailService {
             createdAt: new Date().toISOString(),
           })
           .execute();
+        sendPushNotification(c.env, {
+          title: "Email sent",
+          body: `"${payload.subject}" → ${payload.to} via ${vendor.name}`,
+          tag: "email-sent",
+        }).catch(() => {});
         return;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -101,6 +107,11 @@ export class EmailService {
             createdAt: new Date().toISOString(),
           })
           .execute();
+        sendPushNotification(c.env, {
+          title: "Email failed",
+          body: `${vendor.name}: ${message}`,
+          tag: "email-failed",
+        }).catch(() => {});
       }
     }
 

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { get } from "../api/client";
 import type { ApiResponse } from "../types";
+import PushSetup from "../components/PushSetup";
 
 interface LogEntry {
   id: string;
@@ -210,6 +211,7 @@ export default function ActivityLog() {
           })}
         </div>
       )}
+      <PushSetup />
     </motion.div>
   );
 }
