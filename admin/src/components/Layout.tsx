@@ -343,7 +343,7 @@ export default function Layout() {
   return (
     <div
       className="flex min-h-dvh"
-      style={{ background: "var(--bg-primary)", paddingTop: "var(--sat)" }}
+      style={{ background: "var(--bg-primary)", paddingTop: "var(--sat)", minWidth: 0 }}
     >
       <nav
         className="sidebar-nav glass-sidebar flex-col fixed h-screen z-10"
@@ -394,6 +394,7 @@ export default function Layout() {
           marginLeft: sidebarW,
           padding: "40px 36px",
           paddingBottom: 40,
+          minWidth: 0,
           transition: "margin-left 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
         }}
       >
