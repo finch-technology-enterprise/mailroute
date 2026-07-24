@@ -71,6 +71,7 @@ export default function RichEditor({
   return (
     <div className="card" style={{ padding: 0, overflow: "hidden" }}>
       <div
+        className="editor-toolbar"
         style={{
           display: "flex",
           gap: 2,

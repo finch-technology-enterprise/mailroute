@@ -125,9 +125,12 @@ html {
   -webkit-text-size-adjust: 100%;
 }
 
-/* Disable double-tap zoom on touch */
+/* Disable double-tap zoom on touch, allow scroll on overflow containers */
 * {
   touch-action: manipulation;
+}
+.table-wrap, .overflow-x-auto, [style*="overflow-x"] {
+  touch-action: pan-x pan-y;
 }
 
 body {
@@ -628,8 +631,8 @@ body:has(.modal-overlay) .bottom-nav {
     border-bottom-right-radius: 0;
     margin: 0;
     max-width: 100%;
-    max-height: 85vh;
-    padding: 24px;
+    max-height: 90vh;
+    padding: 16px 20px calc(16px + var(--sab));
     padding-top: 16px;
   }
   /* Drag handle for bottom sheet modal */
@@ -640,7 +643,7 @@ body:has(.modal-overlay) .bottom-nav {
     height: 4px;
     border-radius: 2px;
     background: var(--border-hover);
-    margin: 0 auto 20px;
+    margin: 0 auto 16px;
   }
   .apple-table th,
   .apple-table td {
@@ -654,6 +657,17 @@ body:has(.modal-overlay) .bottom-nav {
     padding-bottom: calc(
       var(--bottom-nav-height) + var(--sab) + 16px
     ) !important;
+  }
+  .bottom-nav-inner {
+    padding: 4px 4px;
+    gap: 1px;
+  }
+  .bottom-nav-item {
+    min-height: 40px;
+  }
+  .bottom-nav-icon span {
+    width: 20px !important;
+    height: 20px !important;
   }
   .apple-table {
     font-size: 13px;
@@ -755,6 +769,19 @@ body:has(.modal-overlay) .bottom-nav {
   border-radius: var(--radius-md);
   background: rgba(0, 113, 227, 0.08);
   pointer-events: none;
+}
+
+/* Rich editor toolbar scroll on mobile */
+@media (max-width: 768px) {
+  .editor-toolbar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap !important;
+    scrollbar-width: none;
+  }
+  .editor-toolbar::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* Toast positioning */

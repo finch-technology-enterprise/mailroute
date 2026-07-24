@@ -20,6 +20,8 @@ export default function Vendors() {
   const [deleting, setDeleting] = useState(false);
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
+  const touchStartY = useRef(0);
+  const touchItemIndex = useRef<number | null>(null);
   const { toast } = useToast();
 
   const fetchVendors = useCallback(async () => {
@@ -109,6 +111,32 @@ export default function Vendors() {
       toast(err instanceof Error ? err.message : "Failed to save priority", "error");
       fetchVendors();
     }
+  };
+
+  const handleTouchStart = (index: number, e: React.TouchEvent) => {
+    touchItemIndex.current = index;
+    touchStartY.current = e.touches[0].clientY;
+    dragItem.current = index;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchItemIndex.current === null) return;
+    const y = e.touches[0].clientY;
+    const target = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY)?.closest("tr");
+    if (target) {
+      const rows = Array.from(target.closest("tbody")?.querySelectorAll("tr") || []);
+      const overIndex = rows.indexOf(target);
+      if (overIndex >= 0 && overIndex !== touchItemIndex.current) {
+        dragOverItem.current = overIndex;
+        setVendors((prev) => [...prev]); // force re-render for border highlight
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (touchItemIndex.current === null) return;
+    handleDrop();
+    touchItemIndex.current = null;
   };
 
   const dragColumns = [
@@ -214,6 +242,9 @@ export default function Vendors() {
               onDragStart: () => handleDragStart(i),
               onDragOver: () => handleDragOver(i),
               onDragEnd: handleDrop,
+              onTouchStart: (e: React.TouchEvent) => handleTouchStart(i, e),
+              onTouchMove: handleTouchMove,
+              onTouchEnd: handleTouchEnd,
               style: {
                 cursor: "grab",
                 opacity: dragItem.current === i ? 0.5 : 1,

@@ -264,7 +264,7 @@ function BottomNav() {
   return (
     <nav className="bottom-nav">
       <div className="bottom-nav-inner">
-        {navItems.slice(0, 6).map((item) => {
+        {navItems.slice(0, 5).map((item) => {
           const isActive =
             activeTo === item.to ||
             (item.to !== "/" && activeTo.startsWith(item.to));
@@ -286,14 +286,14 @@ function BottomNav() {
               <span className="bottom-nav-icon" style={{ position: "relative", zIndex: 1 }}>
                 <span
                   dangerouslySetInnerHTML={{ __html: item.icon }}
-                  style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", color: isActive ? "var(--accent)" : undefined }}
+                  style={{ width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center", color: isActive ? "var(--accent)" : undefined }}
                 />
               </span>
               <span
                 style={{
                   position: "relative",
                   zIndex: 1,
-                  fontSize: 11,
+                  fontSize: 10,
                   fontWeight: isActive ? 600 : 500,
                   color: isActive ? "var(--accent)" : "var(--text-tertiary)",
                 }}
@@ -303,6 +303,17 @@ function BottomNav() {
             </button>
           );
         })}
+        <button
+          type="button"
+          className="bottom-nav-item"
+          onClick={() => { clearAuthKey(); window.location.reload(); }}
+          style={{ flex: "0 0 44px", minWidth: 44 }}
+          aria-label="Sign out"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--red)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+        </button>
       </div>
     </nav>
   );
