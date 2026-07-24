@@ -52,10 +52,10 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          react: ["react", "react-dom", "react-router-dom"],
-          motion: ["motion"],
-          tiptap: ["@tiptap/react", "@tiptap/starter-kit"],
+        manualChunks(id: string) {
+          if (id.includes("node_modules/react") || id.includes("node_modules/react-dom") || id.includes("node_modules/react-router")) return "react";
+          if (id.includes("node_modules/motion")) return "motion";
+          if (id.includes("node_modules/@tiptap")) return "tiptap";
         },
       },
     },
