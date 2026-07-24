@@ -10,7 +10,7 @@ const TemplatesPage = lazy(() => import("./pages/Templates"));
 const TestSendPage = lazy(() => import("./pages/TestSend"));
 const ActivityLogPage = lazy(() => import("./pages/ActivityLog"));
 const ApiKeysPage = lazy(() => import("./pages/ApiKeys"));
-const TenantSettingsPage = lazy(() => import("./pages/TenantSettings"));
+const ChangePasswordPage = lazy(() => import("./pages/ChangePassword"));
 const LoginPage = lazy(() => import("./pages/Login"));
 const SignupPage = lazy(() => import("./pages/Signup"));
 const ForgotPasswordPage = lazy(() => import("./pages/ForgotPassword"));
@@ -44,7 +44,7 @@ export default function App() {
               <Route path="templates" element={<TemplatesPage />} />
               <Route path="test-send" element={<TestSendPage />} />
               <Route path="activity" element={<ActivityLogPage />} />
-              <Route path="settings" element={<TenantSettingsPage />} />
+              <Route path="settings" element={<ChangePasswordPage />} />
               <Route path="api-keys" element={<ApiKeysPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>

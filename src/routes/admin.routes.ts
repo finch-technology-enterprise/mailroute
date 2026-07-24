@@ -1,4 +1,4 @@
-import { Context, Hono } from "hono";
+import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { drizzle } from "drizzle-orm/d1";
@@ -12,15 +12,11 @@ import {
   EmailTemplate,
   SendLog,
   ActivityLog,
-  ServiceConfig,
   PushSubscription,
   ApiKey,
-  Tenant,
 } from "../db/schema";
 import { EmailService } from "../services/email.service";
-import { ConfigService } from "../services/config.service";
 import { EmailVendorService } from "../services/email-vendor.service";
-import { encrypt, decrypt, isEncrypted, generateSecret } from "../lib/crypto";
 import { generateApiKey, hashApiKey } from "../lib/password";
 import type { AppEnv } from "../lib/app-env";
 
@@ -244,192 +240,6 @@ admin.post("/test-send", zValidator("json", testSendSchema), async (c) => {
     const message = error instanceof Error ? error.message : String(error);
     return c.json(ApiResponse(false, message), 502);
   }
-});
-
-// --- Tenant Settings ---
-
-admin.get("/tenant/settings", async (c) => {
-  const db = drizzle(c.env.D1_DATABASE);
-  const tenantId = c.get("tenantId");
-  const tenant = await db.select().from(Tenant).where(eq(Tenant.id, tenantId)).get();
-  if (!tenant) return c.json(ApiResponse(false, "Tenant not found"), 404);
-  const settings = (() => { try { return JSON.parse(tenant.settings); } catch { return {}; } })();
-  return c.json(ApiResponse(true, null, { name: tenant.name, slug: tenant.slug, settings }));
-});
-
-const settingsSchema = z.object({
-  settings: z.record(z.string(), z.unknown()),
-});
-
-admin.put("/tenant/settings", zValidator("json", settingsSchema), async (c) => {
-  const db = drizzle(c.env.D1_DATABASE);
-  const tenantId = c.get("tenantId");
-  const { settings } = c.req.valid("json");
-  await db.update(Tenant).set({ settings: JSON.stringify(settings) }).where(eq(Tenant.id, tenantId)).execute();
-  return c.json(ApiResponse(true, "Settings updated"));
-});
-
-// --- Config ---
-
-const encKey = (c: Context<AppEnv>): string => {
-  return c.env.CONFIG_ENCRYPTION_KEY || "";
-};
-
-admin.get("/config", async (c) => {
-  const db = drizzle(c.env.D1_DATABASE);
-  const tenantId = c.get("tenantId");
-  const rows = await db.select().from(ServiceConfig).where(eq(ServiceConfig.tenantId, tenantId)).all();
-  const mapped = rows.map((r) => ({
-    ...r,
-    value:
-      r.value.length > 64 && isEncrypted(r.value)
-        ? r.value.slice(0, 20) + "…(encrypted)"
-        : r.value,
-    encrypted: isEncrypted(r.value),
-  }));
-  return c.json(ApiResponse(true, null, mapped));
-});
-
-const configUpsertSchema = z.object({
-  value: z.string(),
-  key: z.string().min(1).max(128).optional(),
-  service: z.string().min(1).max(64).optional(),
-});
-
-admin.post(
-  "/config",
-  zValidator("json", configUpsertSchema),
-  async (c) => {
-    const db = drizzle(c.env.D1_DATABASE);
-    const tenantId = c.get("tenantId");
-    const { service, key, value } = c.req.valid("json");
-    const now = new Date().toISOString();
-    await db
-      .insert(ServiceConfig)
-      .values({ tenantId, service: service!, key: key!, value, updatedAt: now })
-      .onConflictDoUpdate({
-        target: [ServiceConfig.tenantId, ServiceConfig.service, ServiceConfig.key],
-        set: { value, updatedAt: now },
-      })
-      .execute();
-    ConfigService.invalidateCache();
-    await logActivity(c.env, "config_updated", `Config "${service}/${key}" saved`, undefined, tenantId);
-    return c.json(ApiResponse(true, "Config saved"));
-  },
-);
-
-const configUpdateSchema = z.object({ value: z.string() });
-
-admin.put(
-  "/config/:service/:key",
-  zValidator("json", configUpdateSchema),
-  async (c) => {
-    const db = drizzle(c.env.D1_DATABASE);
-    const tenantId = c.get("tenantId");
-    const service = c.req.param("service");
-    const key = c.req.param("key");
-    const { value } = c.req.valid("json");
-    const now = new Date().toISOString();
-    await db
-      .update(ServiceConfig)
-      .set({ value, updatedAt: now })
-      .where(and(eq(ServiceConfig.tenantId, tenantId), eq(ServiceConfig.service, service), eq(ServiceConfig.key, key)))
-      .execute();
-    ConfigService.invalidateCache();
-    await logActivity(c.env, "config_updated", `Config "${service}/${key}" updated`, undefined, tenantId);
-    return c.json(ApiResponse(true, "Config updated"));
-  },
-);
-
-admin.post("/config/:service/:key/encrypt", async (c) => {
-  const key = encKey(c);
-  if (!key)
-    return c.json(ApiResponse(false, "CONFIG_ENCRYPTION_KEY not set"), 400);
-  const db = drizzle(c.env.D1_DATABASE);
-  const tenantId = c.get("tenantId");
-  const service = c.req.param("service");
-  const k = c.req.param("key");
-  const row = await db
-    .select()
-    .from(ServiceConfig)
-    .where(and(eq(ServiceConfig.tenantId, tenantId), eq(ServiceConfig.service, service), eq(ServiceConfig.key, k)))
-    .get();
-  if (!row) return c.json(ApiResponse(false, "Not found"), 404);
-  if (isEncrypted(row.value))
-    return c.json(ApiResponse(false, "Already encrypted"));
-  const encrypted = await encrypt(row.value, key);
-  await db
-    .update(ServiceConfig)
-    .set({ value: encrypted })
-    .where(and(eq(ServiceConfig.tenantId, tenantId), eq(ServiceConfig.service, service), eq(ServiceConfig.key, k)))
-    .execute();
-  ConfigService.invalidateCache();
-  await logActivity(c.env, "config_encrypted", `Config "${service}/${k}" encrypted`, undefined, tenantId);
-  return c.json(ApiResponse(true, "Encrypted"));
-});
-
-admin.post("/config/:service/:key/decrypt", async (c) => {
-  const key = encKey(c);
-  if (!key)
-    return c.json(ApiResponse(false, "CONFIG_ENCRYPTION_KEY not set"), 400);
-  const db = drizzle(c.env.D1_DATABASE);
-  const tenantId = c.get("tenantId");
-  const service = c.req.param("service");
-  const k = c.req.param("key");
-  const row = await db
-    .select()
-    .from(ServiceConfig)
-    .where(and(eq(ServiceConfig.tenantId, tenantId), eq(ServiceConfig.service, service), eq(ServiceConfig.key, k)))
-    .get();
-  if (!row) return c.json(ApiResponse(false, "Not found"), 404);
-  if (!isEncrypted(row.value))
-    return c.json(ApiResponse(false, "Not encrypted"));
-  const decrypted = await decrypt(row.value, key);
-  return c.json(ApiResponse(true, null, { value: decrypted }));
-});
-
-admin.post("/config/:service/:key/rotate", async (c) => {
-  const key = encKey(c);
-  if (!key)
-    return c.json(ApiResponse(false, "CONFIG_ENCRYPTION_KEY not set"), 400);
-  const db = drizzle(c.env.D1_DATABASE);
-  const tenantId = c.get("tenantId");
-  const service = c.req.param("service");
-  const k = c.req.param("key");
-  const row = await db
-    .select()
-    .from(ServiceConfig)
-    .where(and(eq(ServiceConfig.tenantId, tenantId), eq(ServiceConfig.service, service), eq(ServiceConfig.key, k)))
-    .get();
-  if (!row) return c.json(ApiResponse(false, "Not found"), 404);
-  const newValue = generateSecret();
-  await db
-    .update(ServiceConfig)
-    .set({ value: newValue, updatedAt: new Date().toISOString() })
-    .where(and(eq(ServiceConfig.tenantId, tenantId), eq(ServiceConfig.service, service), eq(ServiceConfig.key, k)))
-    .execute();
-  ConfigService.invalidateCache();
-  return c.json(ApiResponse(true, "Rotated", { value: newValue }));
-});
-
-admin.delete("/config/:service/:key", async (c) => {
-  const db = drizzle(c.env.D1_DATABASE);
-  const tenantId = c.get("tenantId");
-  const service = c.req.param("service");
-  const k = c.req.param("key");
-  const row = await db
-    .select()
-    .from(ServiceConfig)
-    .where(and(eq(ServiceConfig.tenantId, tenantId), eq(ServiceConfig.service, service), eq(ServiceConfig.key, k)))
-    .get();
-  if (!row) return c.json(ApiResponse(false, "Not found"), 404);
-  await db
-    .delete(ServiceConfig)
-    .where(and(eq(ServiceConfig.tenantId, tenantId), eq(ServiceConfig.service, service), eq(ServiceConfig.key, k)))
-    .execute();
-  ConfigService.invalidateCache();
-  await logActivity(c.env, "config_deleted", `Config "${service}/${k}" deleted`, undefined, tenantId);
-  return c.json(ApiResponse(true, "Config deleted"));
 });
 
 // --- Logs ---

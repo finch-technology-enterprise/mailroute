@@ -12,7 +12,6 @@ export const Tenant = sqliteTable("tenants", {
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
   apiAuthKeyHash: text("api_auth_key_hash"),
-  settings: text("settings").notNull().default("{}"),
   createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
   updatedAt: text("updated_at").$defaultFn(() => new Date().toISOString()),
 });
@@ -59,18 +58,6 @@ export const EmailTemplate = sqliteTable("email_templates", {
   createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
   updatedAt: text("updated_at").$defaultFn(() => new Date().toISOString()),
 });
-
-export const ServiceConfig = sqliteTable(
-  "service_config",
-  {
-    tenantId: text("tenant_id").notNull(),
-    service: text("service").notNull(),
-    key: text("key").notNull(),
-    value: text("value").notNull(),
-    updatedAt: text("updated_at").$defaultFn(() => new Date().toISOString()),
-  },
-  (table) => [primaryKey({ columns: [table.tenantId, table.service, table.key] })],
-);
 
 export const EmailVendor = sqliteTable("email_vendors", {
   id: text("id").primaryKey(),

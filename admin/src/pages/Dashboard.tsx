@@ -20,7 +20,7 @@ const iconNameMap: Record<string, string> = {
   Templates: "templates",
   "Test Send": "test-send",
   Activity: "activity",
-  Config: "config",
+  Settings: "config",
 };
 
 function StatCard({ label, value, actionLabel, onClick }: {
@@ -118,7 +118,7 @@ export default function Dashboard() {
             <StatCard label="Templates" value={String(stats?.templateCount ?? 0)} actionLabel="Manage" onClick={() => navigate("/templates")} />
             <StatCard label="Test Send" value="" actionLabel="Send test" onClick={() => navigate("/test-send")} />
             <StatCard label="Activity" value="" actionLabel="View log" onClick={() => navigate("/activity")} />
-            <StatCard label="Config" value="" actionLabel="Settings" onClick={() => navigate("/config")} />
+            <StatCard label="Settings" value="" actionLabel="Settings" onClick={() => navigate("/settings")} />
           </div>
 
           {recentLogs.length > 0 && (
