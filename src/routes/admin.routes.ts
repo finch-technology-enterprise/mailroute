@@ -11,6 +11,7 @@ import {
   EmailVendor,
   EmailTemplate,
   SendLog,
+  ActivityLog,
   ServiceConfig,
 } from "../db/schema";
 import { EmailService } from "../services/email.service";
@@ -20,6 +21,18 @@ import { encrypt, decrypt, isEncrypted, generateSecret } from "../lib/crypto";
 
 type Bindings = { Bindings: CloudflareBindings };
 const admin = new Hono<Bindings>();
+
+async function logActivity(c: Bindings["Bindings"], type: string, summary: string, detail?: string) {
+  try {
+    await drizzle(c.D1_DATABASE).insert(ActivityLog).values({
+      id: crypto.randomUUID(),
+      type,
+      summary,
+      detail: detail || null,
+      createdAt: new Date().toISOString(),
+    }).execute();
+  } catch {}
+}
 
 admin.use("*", ApiAuthKeyMiddleware);
 admin.use("*", RateLimitMiddleware);
@@ -65,6 +78,7 @@ admin.post("/vendors", zValidator("json", vendorSchema), async (c) => {
     .from(EmailVendor)
     .where(eq(EmailVendor.id, id))
     .get();
+  await logActivity(c.env, "vendor_created", `Vendor "${data.name}" created`);
   return c.json(ApiResponse(true, "Vendor created", row), 201);
 });
 
@@ -86,6 +100,7 @@ admin.put("/vendors/:id", zValidator("json", vendorUpdateSchema), async (c) => {
     .where(eq(EmailVendor.id, id))
     .get();
   if (!row) return c.json(ApiResponse(false, "Vendor not found"), 404);
+  await logActivity(c.env, "vendor_updated", `Vendor "${id}" updated`);
   return c.json(ApiResponse(true, "Vendor updated", row));
 });
 
@@ -100,6 +115,7 @@ admin.delete("/vendors/:id", async (c) => {
   if (!existing) return c.json(ApiResponse(false, "Vendor not found"), 404);
   await db.delete(EmailVendor).where(eq(EmailVendor.id, id)).execute();
   EmailVendorService.invalidateCache();
+  await logActivity(c.env, "vendor_deleted", `Vendor "${id}" deleted`);
   return c.json(ApiResponse(true, "Vendor deleted"));
 });
 
@@ -136,6 +152,7 @@ admin.post("/templates", zValidator("json", templateSchema), async (c) => {
     .from(EmailTemplate)
     .where(eq(EmailTemplate.slug, data.slug))
     .get();
+  await logActivity(c.env, "template_created", `Template "${data.slug}" created`);
   return c.json(ApiResponse(true, "Template created", row), 201);
 });
 
@@ -157,6 +174,7 @@ admin.put(
       .where(eq(EmailTemplate.id, id))
       .get();
     if (!row) return c.json(ApiResponse(false, "Template not found"), 404);
+    await logActivity(c.env, "template_updated", `Template "${id}" updated`);
     return c.json(ApiResponse(true, "Template updated", row));
   },
 );
@@ -171,6 +189,7 @@ admin.delete("/templates/:id", async (c) => {
     .get();
   if (!existing) return c.json(ApiResponse(false, "Template not found"), 404);
   await db.delete(EmailTemplate).where(eq(EmailTemplate.id, id)).execute();
+  await logActivity(c.env, "template_deleted", `Template "${id}" deleted`);
   return c.json(ApiResponse(true, "Template deleted"));
 });
 
@@ -251,6 +270,7 @@ admin.post(
       })
       .execute();
     ConfigService.invalidateCache();
+    await logActivity(c.env, "config_updated", `Config "${service}/${key}" saved`);
     return c.json(ApiResponse(true, "Config saved"));
   },
 );
@@ -272,6 +292,7 @@ admin.put(
       .where(and(eq(ServiceConfig.service, service), eq(ServiceConfig.key, key)))
       .execute();
     ConfigService.invalidateCache();
+    await logActivity(c.env, "config_updated", `Config "${service}/${key}" updated`);
     return c.json(ApiResponse(true, "Config updated"));
   },
 );
@@ -298,6 +319,7 @@ admin.post("/config/:service/:key/encrypt", async (c) => {
     .where(and(eq(ServiceConfig.service, service), eq(ServiceConfig.key, k)))
     .execute();
   ConfigService.invalidateCache();
+  await logActivity(c.env, "config_encrypted", `Config "${service}/${k}" encrypted`);
   return c.json(ApiResponse(true, "Encrypted"));
 });
 
@@ -341,6 +363,7 @@ admin.post("/config/:service/:key/rotate", async (c) => {
     .where(and(eq(ServiceConfig.service, service), eq(ServiceConfig.key, k)))
     .execute();
   ConfigService.invalidateCache();
+  await logActivity(c.env, "config_rotated", `Config "${service}/${k}" rotated`);
   return c.json(ApiResponse(true, "Rotated", { value: newValue }));
 });
 
@@ -359,6 +382,7 @@ admin.delete("/config/:service/:key", async (c) => {
     .where(and(eq(ServiceConfig.service, service), eq(ServiceConfig.key, k)))
     .execute();
   ConfigService.invalidateCache();
+  await logActivity(c.env, "config_deleted", `Config "${service}/${k}" deleted`);
   return c.json(ApiResponse(true, "Config deleted"));
 });
 
@@ -366,13 +390,29 @@ admin.delete("/config/:service/:key", async (c) => {
 
 admin.get("/logs", async (c) => {
   const db = drizzle(c.env.D1_DATABASE);
-  const rows = await db
-    .select()
-    .from(SendLog)
-    .orderBy(desc(SendLog.createdAt))
-    .limit(100)
-    .all();
-  return c.json(ApiResponse(true, null, rows));
+  const [sends, activities] = await Promise.all([
+    db.select().from(SendLog).orderBy(desc(SendLog.createdAt)).limit(100).all(),
+    db.select().from(ActivityLog).orderBy(desc(ActivityLog.createdAt)).limit(100).all(),
+  ]);
+  const mapped = [
+    ...sends.map((s) => ({
+      id: s.id,
+      type: s.status === "sent" ? "email_sent" : "email_failed",
+      summary: s.subject,
+      detail: `${s.vendorName} → ${s.toEmail}`,
+      status: s.status,
+      createdAt: s.createdAt,
+    })),
+    ...activities.map((a) => ({
+      id: a.id,
+      type: a.type,
+      summary: a.summary,
+      detail: a.detail || "",
+      status: null as string | null,
+      createdAt: a.createdAt,
+    })),
+  ].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 100);
+  return c.json(ApiResponse(true, null, mapped));
 });
 
 export default admin;

@@ -5,18 +5,50 @@ import type { ApiResponse } from "../types";
 
 interface LogEntry {
   id: string;
-  vendor: string;
-  to: string;
-  subject: string;
-  status: "sent" | "failed";
-  error?: string;
-  created_at: string;
+  type: string;
+  summary: string;
+  detail: string | null;
+  status: string | null;
+  createdAt: string;
 }
 
-// Votes endpoint — returns empty array until backend exists
+function formatTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return new Date(dateStr).toLocaleDateString();
+}
+
+function getBadge(type: string, status: string | null) {
+  if (type.startsWith("email_")) {
+    const ok = status === "sent";
+    return {
+      bg: ok ? "var(--green-bg)" : "var(--red-bg)",
+      color: ok ? "var(--green)" : "var(--red)",
+      icon: ok
+        ? '<polyline points="20 6 9 17 4 12"/>'
+        : '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+    };
+  }
+  return {
+    bg: "color-mix(in srgb, var(--accent) 12%, transparent)",
+    color: "var(--accent)",
+    icon:
+      type.startsWith("vendor_")
+        ? '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>'
+        : type.startsWith("template_")
+          ? '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>'
+          : '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  };
+}
+
 export default function ActivityLog() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     get<ApiResponse<LogEntry[]>>("/logs")
@@ -25,21 +57,84 @@ export default function ActivityLog() {
       .finally(() => setLoading(false));
   }, []);
 
+  const filtered = logs.filter((log) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      log.summary.toLowerCase().includes(q) ||
+      (log.detail || "").toLowerCase().includes(q)
+    );
+  });
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.2 }}
     >
-      <h1 className="mb-8">Activity Log</h1>
-      {loading ? (
-        <div
-          className="card p-8 text-center"
-          style={{ color: "var(--text-secondary)", fontSize: 14 }}
-        >
-          Loading...
+      <div className="mb-6">
+        <h1 className="mb-1">Activity Log</h1>
+        <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>
+          {loading ? "Loading..." : `${filtered.length} entr${filtered.length !== 1 ? "ies" : "y"}`}
+        </p>
+      </div>
+
+      {!loading && logs.length > 0 && (
+        <div className="mb-5">
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              background: "var(--bg-secondary)",
+              border: "1px solid var(--border)",
+              borderRadius: 10,
+              padding: "8px 14px",
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+              <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search activity…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{
+                flex: 1,
+                border: "none",
+                outline: "none",
+                background: "transparent",
+                fontSize: 13,
+                color: "var(--text-primary)",
+              }}
+            />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-tertiary)", padding: 0, fontSize: 16, lineHeight: 1 }}
+              >
+                ×
+              </button>
+            )}
+          </div>
         </div>
-      ) : logs.length === 0 ? (
+      )}
+
+      {loading ? (
+        <div className="card p-6 flex flex-col gap-4">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="flex items-center gap-3">
+              <div className="skeleton-shimmer" style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0 }} />
+              <div className="flex-1">
+                <div className="skeleton-shimmer" style={{ height: 13, width: "60%", marginBottom: 6 }} />
+                <div className="skeleton-shimmer" style={{ height: 11, width: "40%" }} />
+              </div>
+              <div className="skeleton-shimmer" style={{ width: 40, height: 11, flexShrink: 0 }} />
+            </div>
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="card flex flex-col items-center justify-center px-8 py-20 text-center">
           <div
             style={{
@@ -54,71 +149,65 @@ export default function ActivityLog() {
               color: "var(--text-tertiary)",
             }}
           >
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-              <line x1="16" y1="13" x2="8" y2="13" />
-              <line x1="16" y1="17" x2="8" y2="17" />
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
             </svg>
           </div>
           <h3 className="mb-2 text-lg" style={{ fontWeight: 600 }}>
-            No activity yet
+            {search ? "No matching activity" : "No activity yet"}
           </h3>
-          <p
-            className="mb-2"
-            style={{ color: "var(--text-secondary)", fontSize: 14 }}
-          >
-            Send a test email and it will appear here.
-          </p>
-          <p style={{ color: "var(--text-tertiary)", fontSize: 12 }}>
-            Requires a send_logs table in D1 — coming soon.
+          <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>
+            {search ? "Try a different search term." : "Activity from the app will appear here."}
           </p>
         </div>
       ) : (
         <div className="card overflow-hidden">
-          <table className="apple-table">
-            <thead>
-              <tr>
-                <th>Vendor</th>
-                <th>To</th>
-                <th>Subject</th>
-                <th>Status</th>
-                <th>Time</th>
-              </tr>
-            </thead>
-            <tbody>
-              {logs.map((log) => (
-                <tr key={log.id}>
-                  <td>
-                    <span className="code">{log.vendor}</span>
-                  </td>
-                  <td style={{ color: "var(--text-secondary)" }}>{log.to}</td>
-                  <td style={{ color: "var(--text-secondary)" }}>
-                    {log.subject}
-                  </td>
-                  <td>
-                    <span
-                      className={`apple-badge ${log.status === "sent" ? "apple-badge-enabled" : "apple-badge-disabled"}`}
-                    >
-                      {log.status}
-                    </span>
-                  </td>
-                  <td style={{ color: "var(--text-tertiary)", fontSize: 12 }}>
-                    {new Date(log.created_at).toLocaleString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {filtered.map((log, i) => {
+            const badge = getBadge(log.type, log.status);
+            return (
+              <motion.div
+                key={log.id}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: "spring", bounce: 0, duration: 0.35, delay: i * 0.04 }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "12px 18px",
+                  borderBottom: i < filtered.length - 1 ? "1px solid var(--border)" : "none",
+                }}
+              >
+                <div
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 8,
+                    background: badge.bg,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={badge.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: badge.icon }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {log.summary}
+                  </div>
+                  {log.detail && (
+                    <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 1 }}>
+                      {log.detail}
+                    </div>
+                  )}
+                </div>
+                <span style={{ fontSize: 11, color: "var(--text-tertiary)", flexShrink: 0, whiteSpace: "nowrap" }}>
+                  {formatTime(log.createdAt)}
+                </span>
+              </motion.div>
+            );
+          })}
         </div>
       )}
     </motion.div>

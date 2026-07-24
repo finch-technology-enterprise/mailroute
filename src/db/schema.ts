@@ -67,3 +67,13 @@ export const SendLog = sqliteTable("send_logs", {
 });
 
 export type SendLogRow = typeof SendLog.$inferSelect;
+
+export const ActivityLog = sqliteTable("activity_logs", {
+  id: text("id").primaryKey(),
+  type: text("type").notNull(),
+  summary: text("summary").notNull(),
+  detail: text("detail"),
+  createdAt: text("created_at").notNull(),
+});
+
+export type ActivityLogRow = typeof ActivityLog.$inferSelect;
