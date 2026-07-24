@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { hasAuthKey, clearAuthKey } from "../api/client";
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion } from "motion/react";
 
 const navItems = [
   {
@@ -117,238 +117,126 @@ function AuthScreen() {
   );
 }
 
-function SettingsPopover({ onClose }: { onClose: () => void }) {
-  const [keyValue, setKeyValue] = useState("");
-  const [dark, setDark] = useState(
-    () => document.documentElement.getAttribute("data-theme") === "dark",
-  );
-  const [showDisconnect, setShowDisconnect] = useState(false);
+function ThemeToggle({ collapsed }: { collapsed: boolean }) {
+  const modes = ["light", "auto", "dark"] as const;
+  const [mode, setMode] = useState<"light" | "auto" | "dark">(() => {
+    const saved = localStorage.getItem("mailroute-theme");
+    if (saved === "light" || saved === "dark") return saved;
+    return "auto";
+  });
 
-  const toggleDark = () => {
-    const next = !dark;
-    setDark(next);
-    document.documentElement.setAttribute(
-      "data-theme",
-      next ? "dark" : "light",
-    );
-    localStorage.setItem("mailroute-theme", next ? "dark" : "light");
-  };
-
-  const handleSave = () => {
-    if (keyValue) {
-      localStorage.setItem("mailroute_api_key", keyValue);
-      setKeyValue("");
+  const cycle = () => {
+    const next = modes[(modes.indexOf(mode) + 1) % modes.length];
+    setMode(next);
+    if (next === "auto") {
+      document.documentElement.removeAttribute("data-theme");
+    } else {
+      document.documentElement.setAttribute("data-theme", next);
     }
+    localStorage.setItem("mailroute-theme", next);
   };
+
+  const icon = mode === "dark" ? (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+    </svg>
+  ) : mode === "light" ? (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+    </svg>
+  ) : (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="5" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+    </svg>
+  );
+
+  const label = mode === "dark" ? "Dark" : mode === "light" ? "Light" : "Auto";
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -4, scale: 0.96 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -4, scale: 0.96 }}
-      transition={{ type: "spring", bounce: 0, duration: 0.25 }}
-      className="card p-4"
+    <motion.button
+      onClick={cycle}
+      whileTap={{ scale: 0.95 }}
       style={{
-        position: "absolute",
-        bottom: "100%",
-        left: 0,
-        right: 0,
-        marginBottom: 8,
+        width: "100%",
+        padding: collapsed ? "8px 0" : "8px 10px",
+        marginBottom: 2,
+        border: "none",
+        background: "transparent",
+        color: "var(--text-tertiary)",
+        cursor: "pointer",
+        borderRadius: "var(--radius-md)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: collapsed ? "center" : "flex-start",
+        gap: 10,
+        fontSize: 13,
+        fontWeight: 500,
+        transition: "color 0.15s",
       }}
+      aria-label={`Theme: ${mode}`}
+      title={`Theme: ${mode}`}
     >
-      <motion.button
-        className="w-full flex items-center gap-3 rounded-lg transition-colors mb-3"
-        style={{
-          fontSize: 13,
-          fontWeight: 500,
-          color: "var(--text-primary)",
-          padding: "8px 12px",
-          background: "transparent",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--radius-md)",
-          cursor: "pointer",
-        }}
-        onClick={toggleDark}
-        whileTap={{ scale: 0.97 }}
-      >
-        {dark ? (
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="12" cy="12" r="5" />
-            <line x1="12" y1="1" x2="12" y2="3" />
-            <line x1="12" y1="21" x2="12" y2="23" />
-            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-            <line x1="1" y1="12" x2="3" y2="12" />
-            <line x1="21" y1="12" x2="23" y2="12" />
-            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-          </svg>
-        ) : (
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-          </svg>
-        )}
-        {dark ? "Light Mode" : "Dark Mode"}
-      </motion.button>
-      <input
-        type="password"
-        className="apple-input mb-2"
-        style={{ fontSize: 16, padding: "8px 12px" }}
-        placeholder="New API key"
-        value={keyValue}
-        onChange={(e) => setKeyValue(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && handleSave()}
-        autoFocus
-        autoComplete="off"
-      />
-      <div className="flex gap-2">
-        <motion.button
-          className="apple-btn apple-btn-primary"
-          style={{ fontSize: 13, padding: "6px 14px", flex: 1, minHeight: 36 }}
-          onClick={handleSave}
-          whileTap={{ scale: 0.97 }}
-        >
-          Save
-        </motion.button>
-        <motion.button
-          className="apple-btn apple-btn-secondary"
-          style={{ fontSize: 13, padding: "6px 14px", flex: 1, minHeight: 36, borderColor: showDisconnect ? "var(--red)" : undefined, color: showDisconnect ? "var(--red)" : undefined }}
-          onClick={() => {
-            if (showDisconnect) {
-              clearAuthKey();
-              window.location.reload();
-            } else {
-              setShowDisconnect(true);
-            }
-          }}
-          whileTap={{ scale: 0.97 }}
-        >
-          {showDisconnect ? "Confirm disconnect" : "Disconnect"}
-        </motion.button>
-      </div>
-    </motion.div>
+      {icon}
+      {!collapsed && label}
+    </motion.button>
   );
 }
 
 function NavPills({ collapsed }: { collapsed: boolean }) {
-  const [showSettings, setShowSettings] = useState(false);
-
   return (
-    <>
-      <div className="flex flex-col gap-1" style={{ padding: collapsed ? "0 8px" : "0 12px" }}>
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.to === "/"}
-            className="nav-item relative py-2.5 text-sm font-medium rounded-lg transition-colors"
-            style={{
-              color: "var(--text-secondary)",
-              letterSpacing: "-0.01em",
-              display: "flex",
-              justifyContent: collapsed ? "center" : "flex-start",
-              padding: collapsed ? "10px 0" : "10px 12px",
-            }}
-          >
-            {({ isActive }) => (
-              <>
-                {isActive && (
-                  <motion.span
-                    layoutId="nav-pill"
-                    className="absolute inset-0 rounded-lg"
-                    style={{ background: "rgba(0, 113, 227, 0.08)" }}
-                    transition={{ type: "spring", bounce: 0, duration: 0.35 }}
-                  />
-                )}
-                <span
-                  className="relative z-10 flex items-center"
-                  style={{
-                    gap: collapsed ? 0 : 10,
-                    color: isActive ? "var(--accent)" : undefined,
-                    fontWeight: isActive ? 600 : 500,
-                    flexDirection: collapsed ? "column" : "row",
-                    fontSize: collapsed ? 10 : undefined,
-                  }}
-                >
-                  <span
-                    style={{
-                      width: collapsed ? 22 : 20,
-                      height: collapsed ? 22 : 20,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                    }}
-                    dangerouslySetInnerHTML={{ __html: item.icon }}
-                  />
-                  {!collapsed && item.label}
-                </span>
-              </>
-            )}
-          </NavLink>
-        ))}
-      </div>
-
-      <div className="relative" style={{ padding: collapsed ? "8px" : "8px 12px" }}>
-        <motion.button
-          className="nav-item w-full flex items-center rounded-lg transition-colors"
+    <div className="flex flex-col gap-1" style={{ padding: collapsed ? "0 8px" : "0 12px" }}>
+      {navItems.map((item) => (
+        <NavLink
+          key={item.to}
+          to={item.to}
+          end={item.to === "/"}
+          className="nav-item relative py-2.5 text-sm font-medium rounded-lg transition-colors"
           style={{
-            fontSize: 13,
-            fontWeight: 500,
-            color: "var(--text-tertiary)",
-            padding: collapsed ? "10px 0" : "10px 12px",
+            color: "var(--text-secondary)",
+            letterSpacing: "-0.01em",
+            display: "flex",
             justifyContent: collapsed ? "center" : "flex-start",
-            gap: collapsed ? 0 : 10,
-            border: "none",
-            background: "transparent",
-            cursor: "pointer",
+            padding: collapsed ? "10px 0" : "10px 12px",
           }}
-          onClick={() => setShowSettings(!showSettings)}
-          whileTap={{ scale: 0.98 }}
         >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{ flexShrink: 0 }}
-          >
-            <circle cx="12" cy="12" r="3" />
-            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
-          </svg>
-          {!collapsed && "Settings"}
-        </motion.button>
-        {!collapsed && (
-          <AnimatePresence>
-            {showSettings && (
-              <SettingsPopover onClose={() => setShowSettings(false)} />
-            )}
-          </AnimatePresence>
-        )}
-      </div>
-    </>
+          {({ isActive }) => (
+            <>
+              {isActive && (
+                <motion.span
+                  layoutId="nav-pill"
+                  className="absolute inset-0 rounded-lg"
+                  style={{ background: "rgba(0, 113, 227, 0.08)" }}
+                  transition={{ type: "spring", bounce: 0, duration: 0.35 }}
+                />
+              )}
+              <span
+                className="relative z-10 flex items-center"
+                style={{
+                  gap: collapsed ? 0 : 10,
+                  color: isActive ? "var(--accent)" : undefined,
+                  fontWeight: isActive ? 600 : 500,
+                  flexDirection: collapsed ? "column" : "row",
+                  fontSize: collapsed ? 10 : undefined,
+                }}
+              >
+                <span
+                  style={{
+                    width: collapsed ? 22 : 20,
+                    height: collapsed ? 22 : 20,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                  dangerouslySetInnerHTML={{ __html: item.icon }}
+                />
+                {!collapsed && item.label}
+              </span>
+            </>
+          )}
+        </NavLink>
+      ))}
+    </div>
   );
 }
 
@@ -441,13 +329,14 @@ export default function Layout() {
         </div>
         <NavPills collapsed={collapsed} />
         <div style={{ padding: collapsed ? "4px 8px" : "4px 12px" }}>
+          <ThemeToggle collapsed={collapsed} />
           <motion.button
             onClick={() => { clearAuthKey(); window.location.reload(); }}
             whileTap={{ scale: 0.95 }}
             style={{
               width: "100%",
               padding: collapsed ? "8px 0" : "8px 10px",
-              marginBottom: 2,
+              marginTop: 2,
               border: "none",
               background: "transparent",
               color: "var(--red)",
