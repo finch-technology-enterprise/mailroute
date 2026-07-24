@@ -243,20 +243,7 @@ export default function Vendors() {
             data={filtered}
             keyExtractor={(v) => v.id}
             isLoading={false}
-            rowProps={useCallback((v: Vendor, i: number) => ({
-              draggable: true,
-              onDragStart: () => handleDragStart(i),
-              onDragOver: () => handleDragOver(i),
-              onDragEnd: handleDrop,
-              onTouchStart: (e: React.TouchEvent) => handleTouchStart(i, e),
-              onTouchMove: handleTouchMove,
-              onTouchEnd: handleTouchEnd,
-              style: {
-                cursor: "grab",
-                opacity: dragItem.current === i ? 0.5 : 1,
-                borderTop: dragOverItem.current === i && dragItem.current !== i ? "2px solid var(--accent)" : undefined,
-              },
-            }), [])}
+            rowProps={rowProps}
           />
         </div>
       )}
