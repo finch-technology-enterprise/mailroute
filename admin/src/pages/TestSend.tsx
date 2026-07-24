@@ -3,11 +3,15 @@ import { motion } from "motion/react";
 import { useToast } from "../components/Toast";
 import RichEditor from "../components/RichEditor";
 import { sendTestEmail } from "../api/admin";
+import { listVendors } from "../api/vendors";
+import type { Vendor } from "../types";
 
 export default function TestSend() {
   const [to, setTo] = useState("");
   const [subject, setSubject] = useState("");
   const [content, setContent] = useState("");
+  const [vendor, setVendor] = useState("auto");
+  const [vendors, setVendors] = useState<Vendor[]>([]);
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{
     success: boolean;
@@ -19,6 +23,10 @@ export default function TestSend() {
     setResult(null);
     setError("");
   }, [to, subject, content]);
+
+  useEffect(() => {
+    listVendors().then((res) => setVendors(res.data || [])).catch(() => {});
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,7 +48,9 @@ export default function TestSend() {
 
     setSending(true);
     try {
-      const res = await sendTestEmail({ to, subject, content });
+      const payload = { to, subject, content };
+      if (vendor !== "auto") (payload as Record<string, string>).vendor = vendor;
+      const res = await sendTestEmail(payload);
       setResult({ success: res.success, message: res.message || "Email sent" });
     } catch (err) {
       setResult({
@@ -83,6 +93,21 @@ export default function TestSend() {
               onChange={(e) => setSubject(e.target.value)}
               required
             />
+          </div>
+
+          <div>
+            <label className="apple-label">Vendor</label>
+            <select
+              className="apple-input"
+              value={vendor}
+              onChange={(e) => setVendor(e.target.value)}
+              style={{ fontSize: 14, appearance: "auto", cursor: "pointer" }}
+            >
+              <option value="auto">Auto (priority-based failover)</option>
+              {vendors.filter((v) => v.enabled).map((v) => (
+                <option key={v.id} value={v.name}>{v.name}</option>
+              ))}
+            </select>
           </div>
 
           <div>

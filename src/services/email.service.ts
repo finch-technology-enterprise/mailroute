@@ -29,10 +29,14 @@ export class EmailService {
   async sendEmail(
     c: Context<{ Bindings: CloudflareBindings }>,
     payload: EmailPayload,
+    vendorName?: string,
   ) {
     LogToNewRelic(c, "sendEmail", payload);
 
-    const vendors = await this.vendorService.getActiveVendors();
+    let vendors = await this.vendorService.getActiveVendors();
+    if (vendorName) {
+      vendors = vendors.filter((v) => v.name === vendorName);
+    }
     if (vendors.length === 0) {
       throw new Error("No email vendors configured");
     }

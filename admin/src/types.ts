@@ -53,4 +53,5 @@ export interface TestSendPayload {
   to: string;
   subject: string;
   content: string;
+  vendor?: string;
 }
