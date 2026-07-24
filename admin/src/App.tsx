@@ -13,6 +13,8 @@ const ConfigPage = lazy(() => import("./pages/Config"));
 const ApiKeysPage = lazy(() => import("./pages/ApiKeys"));
 const LoginPage = lazy(() => import("./pages/Login"));
 const SignupPage = lazy(() => import("./pages/Signup"));
+const ForgotPasswordPage = lazy(() => import("./pages/ForgotPassword"));
+const ResetPasswordPage = lazy(() => import("./pages/ResetPassword"));
 
 export default function App() {
   return (
@@ -34,6 +36,8 @@ export default function App() {
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route element={<Layout />}>
               <Route index element={<DashboardPage />} />
               <Route path="vendors" element={<VendorsPage />} />

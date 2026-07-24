@@ -5,6 +5,7 @@ import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
 import { Tenant, User, ApiKey } from "../db/schema";
 import { signJWT, verifyJWT } from "../lib/jwt";
+import { generateResetToken, verifyResetToken } from "../lib/reset-token";
 import { hashPassword, verifyPassword, generateApiKey, hashApiKey } from "../lib/password";
 import { ApiResponse } from "../utils/response.util";
 import type { AppEnv } from "../lib/app-env";
@@ -92,6 +93,46 @@ auth.post("/login", zValidator("json", loginSchema), async (c) => {
     tenant: { id: tenant.id, name: tenant.name, slug: tenant.slug },
     token,
   }));
+});
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email().max(254),
+});
+
+auth.post("/forgot-password", zValidator("json", forgotPasswordSchema), async (c) => {
+  const db = drizzle(c.env.D1_DATABASE);
+  const { email } = c.req.valid("json");
+
+  const user = await db.select().from(User).where(eq(User.email, email)).get();
+  if (!user) return c.json(ApiResponse(false, "If that email exists, a reset link has been sent"), 200);
+
+  const token = await generateResetToken(email, c.env.JWT_SECRET);
+  const resetUrl = `${new URL(c.req.url).origin}/admin/reset-password?token=${token}`;
+
+  console.log("RESET_PASSWORD_LINK:", resetUrl);
+
+  return c.json(ApiResponse(true, "If that email exists, a reset link has been sent"));
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(1),
+  password: z.string().min(8).max(128),
+});
+
+auth.post("/reset-password", zValidator("json", resetPasswordSchema), async (c) => {
+  const db = drizzle(c.env.D1_DATABASE);
+  const { token, password } = c.req.valid("json");
+
+  const payload = await verifyResetToken(token, c.env.JWT_SECRET);
+  if (!payload) return c.json(ApiResponse(false, "Invalid or expired token"), 400);
+
+  const user = await db.select().from(User).where(eq(User.email, payload.email)).get();
+  if (!user) return c.json(ApiResponse(false, "User not found"), 404);
+
+  const passwordHash = await hashPassword(password);
+  await db.update(User).set({ passwordHash }).where(eq(User.id, user.id)).execute();
+
+  return c.json(ApiResponse(true, "Password reset successfully"));
 });
 
 auth.get("/me", requireAuth, async (c) => {

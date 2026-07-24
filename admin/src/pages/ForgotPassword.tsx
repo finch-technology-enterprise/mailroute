@@ -1,34 +1,50 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { motion } from "motion/react";
-import { login } from "../api/auth";
-import { setToken } from "../api/client";
+import { authRequest } from "../api/client";
+import type { ApiResponse } from "../types";
 
-export default function Login() {
+export default function ForgotPassword() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
-      const res = await login(email, password);
-      if (res.success && res.data) {
-        setToken(res.data.token);
-        navigate("/");
+      const res = await authRequest<ApiResponse>("POST", "/forgot-password", { email });
+      if (res.success) {
+        setSent(true);
       } else {
-        setError(res.message || "Login failed");
+        setError(res.message || "Request failed");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      setError(err instanceof Error ? err.message : "Request failed");
     } finally {
       setLoading(false);
     }
   };
+
+  if (sent) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        style={{ maxWidth: 400, margin: "80px auto 0", padding: "0 20px", textAlign: "center" }}
+      >
+        <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: "-0.02em", marginBottom: 8 }}>Check your email</h1>
+        <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.6, marginBottom: 32 }}>
+          If an account exists for {email}, we've sent a password reset link.
+        </p>
+        <Link to="/login" style={{ color: "var(--accent)", textDecoration: "none", fontWeight: 500, fontSize: 14 }}>
+          Back to sign in
+        </Link>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -38,7 +54,7 @@ export default function Login() {
     >
       <div style={{ textAlign: "center", marginBottom: 32 }}>
         <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: "-0.02em", marginBottom: 4 }}>mailroute</h1>
-        <p style={{ fontSize: 14, color: "var(--text-secondary)", margin: 0 }}>Sign in to your account</p>
+        <p style={{ fontSize: 14, color: "var(--text-secondary)", margin: 0 }}>Reset your password</p>
       </div>
 
       <form onSubmit={handleSubmit}>
@@ -52,18 +68,7 @@ export default function Login() {
             onChange={(e) => setEmail(e.target.value)}
             required
             autoComplete="email"
-            style={{ width: "100%", border: "none", background: "transparent", padding: "0 14px 12px", fontSize: 15, outline: "none", color: "var(--text-primary)", fontFamily: "var(--font-sans)" }}
-          />
-          <div style={{ height: 1, background: "var(--border)", margin: "0 14px" }} />
-          <div style={{ padding: "12px 14px 0" }}>
-            <label style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}>Password</label>
-          </div>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            autoComplete="current-password"
+            placeholder="jane@example.com"
             style={{ width: "100%", border: "none", background: "transparent", padding: "0 14px 12px", fontSize: 15, outline: "none", color: "var(--text-primary)", fontFamily: "var(--font-sans)" }}
           />
         </div>
@@ -76,18 +81,14 @@ export default function Login() {
           type="submit"
           disabled={loading}
           whileTap={{ scale: 0.97 }}
-          style={{ width: "100%", padding: "14px 20px", borderRadius: 12, border: "none", background: loading ? "#0071e366" : "var(--accent)", color: "#fff", fontSize: 16, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", marginBottom: 12 }}
+          style={{ width: "100%", padding: "14px 20px", borderRadius: 12, border: "none", background: loading ? "#0071e366" : "var(--accent)", color: "#fff", fontSize: 16, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", marginBottom: 16 }}
         >
-          {loading ? "Signing in\u2026" : "Sign In"}
+          {loading ? "Sending\u2026" : "Send Reset Link"}
         </motion.button>
 
-        <div style={{ textAlign: "center", marginBottom: 16 }}>
-          <Link to="/forgot-password" style={{ color: "var(--text-secondary)", textDecoration: "none", fontSize: 13 }}>Forgot password?</Link>
-        </div>
-
         <p style={{ textAlign: "center", fontSize: 13, color: "var(--text-secondary)" }}>
-          No account?{" "}
-          <Link to="/signup" style={{ color: "var(--accent)", textDecoration: "none", fontWeight: 500 }}>Create one</Link>
+          Remember your password?{" "}
+          <Link to="/login" style={{ color: "var(--accent)", textDecoration: "none", fontWeight: 500 }}>Sign in</Link>
         </p>
       </form>
     </motion.div>
