@@ -15,6 +15,7 @@ const LoginPage = lazy(() => import("./pages/Login"));
 const SignupPage = lazy(() => import("./pages/Signup"));
 const ForgotPasswordPage = lazy(() => import("./pages/ForgotPassword"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPassword"));
+const ChangePasswordPage = lazy(() => import("./pages/ChangePassword"));
 
 export default function App() {
   return (
@@ -46,6 +47,7 @@ export default function App() {
               <Route path="activity" element={<ActivityLogPage />} />
               <Route path="config" element={<ConfigPage />} />
               <Route path="api-keys" element={<ApiKeysPage />} />
+              <Route path="settings" element={<ChangePasswordPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
           </Routes>
