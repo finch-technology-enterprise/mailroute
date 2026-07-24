@@ -11,9 +11,7 @@ export const brevoAdapter: EmailVendorAdapter = {
         "api-key": token,
       },
       body: JSON.stringify({
-        sender: { email: from.email, name: from.name },
-        // Brevo treats an empty `name` as missing and rejects it
-        // ("name is missing in to"); `name` is optional, so omit it.
+        sender: { email: from.email, ...(from.name ? { name: from.name } : {}) },
         to: [{ email: to }],
         subject,
         htmlContent: html,
