@@ -222,6 +222,33 @@ function NavPills({ collapsed }: { collapsed: boolean }) {
           )}
         </NavLink>
       ))}
+      <div style={{ height: 1, background: "var(--border)", margin: "4px 0" }} />
+      <motion.button
+        onClick={() => { clearAuthKey(); window.location.reload(); }}
+        whileTap={{ scale: 0.97 }}
+        style={{
+          width: "100%",
+          display: "flex",
+          justifyContent: collapsed ? "center" : "flex-start",
+          alignItems: "center",
+          gap: collapsed ? 0 : 10,
+          padding: collapsed ? "10px 0" : "10px 12px",
+          border: "none",
+          background: "transparent",
+          color: "var(--red)",
+          cursor: "pointer",
+          borderRadius: "var(--radius-md)",
+          fontWeight: 500,
+          flexDirection: collapsed ? "column" : "row",
+          fontSize: collapsed ? 10 : 13,
+        }}
+        aria-label="Sign out"
+      >
+        <svg width={collapsed ? 22 : 20} height={collapsed ? 22 : 20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
+        </svg>
+        {!collapsed && "Sign out"}
+      </motion.button>
     </div>
   );
 }
@@ -316,32 +343,6 @@ export default function Layout() {
         <NavPills collapsed={collapsed} />
         <div style={{ marginTop: "auto", padding: collapsed ? "4px 8px" : "4px 12px", display: "flex", flexDirection: "column", gap: 4 }}>
           <ThemeToggle collapsed={collapsed} />
-          <motion.button
-            onClick={() => { clearAuthKey(); window.location.reload(); }}
-            whileTap={{ scale: 0.95 }}
-            style={{
-              width: "100%",
-              padding: collapsed ? "8px 0" : "8px 10px",
-              border: "none",
-              background: "transparent",
-              color: "var(--red)",
-              cursor: "pointer",
-              borderRadius: "var(--radius-md)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: collapsed ? "center" : "flex-start",
-              gap: 10,
-              fontSize: 13,
-              fontWeight: 500,
-              transition: "color 0.15s",
-            }}
-            aria-label="Sign out"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
-            {!collapsed && "Sign out"}
-          </motion.button>
           <motion.button
             onClick={() => setCollapsed(!collapsed)}
             whileTap={{ scale: 0.95 }}
