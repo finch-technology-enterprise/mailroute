@@ -49,7 +49,7 @@ export const LoggerMiddleware = async (
   }
 
   const requestClone = c.req.raw.clone();
-  let requestBody: any = {};
+  let requestBody: unknown = {};
 
   try {
     if (method !== "GET") {

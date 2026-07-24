@@ -15,8 +15,6 @@ const SERVICE_NAME = "email-microservice";
 /** Keys this service resolves from central config (with env fallback). */
 export type ConfigKey =
   | "API_AUTH_KEY"
-  | "SENDER_API_ENDPOINT"
-  | "SENDER_API_TOKEN"
   | "NEW_RELIC_LICENSE_KEY"
   | "NEW_RELIC_LOG_ENDPOINT"
   | "APP_ENVIRONMENT"

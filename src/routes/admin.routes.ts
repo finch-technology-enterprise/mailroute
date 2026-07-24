@@ -61,7 +61,10 @@ const vendorSchema = z.object({
   apiToken: z.string().min(1).max(2048),
   fromEmail: z.string().email().max(254),
   fromName: z.string().max(128).default(""),
-  config: z.string().optional(),
+  config: z.string().optional().refine((val) => {
+    if (!val) return true;
+    try { JSON.parse(val); return true; } catch { return false; }
+  }, "Config must be valid JSON"),
 });
 
 admin.post("/vendors", zValidator("json", vendorSchema), async (c) => {

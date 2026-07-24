@@ -7,6 +7,10 @@ import { EmailVendorService } from "./email-vendor.service";
 import { SendLog } from "../db/schema";
 import { ADAPTERS } from "../vendors";
 
+function redactError(msg: string): string {
+  return msg.replace(/(token|key|secret|auth|password|api[_-]?key)[=:]\s*\S+/gi, "$1=[REDACTED]");
+}
+
 export interface EmailPayload {
   to: string;
   subject: string;
@@ -93,7 +97,7 @@ export class EmailService {
             toEmail: payload.to,
             subject: payload.subject,
             status: "failed",
-            error: message,
+            error: redactError(message),
             createdAt: new Date().toISOString(),
           })
           .execute();

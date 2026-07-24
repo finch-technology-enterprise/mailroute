@@ -50,7 +50,7 @@ export function LogToNewRelic(
         ]);
         if (!licenseKey || !logEndpoint) return;
 
-        const cf = req.raw.cf as any;
+        const cf = req.raw.cf as Record<string, unknown>;
         const colo = (cf?.colo as string) || "unknown";
         const country = (cf?.country as string) || "unknown";
 

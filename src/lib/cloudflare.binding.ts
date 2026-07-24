@@ -21,17 +21,6 @@ export interface CloudflareBindings {
   TIMEZONE?: string;
   CONFIG_ENCRYPTION_KEY?: string;
 
-  /**
-   * @deprecated Vendor credentials now live in the email_vendors D1 table.
-   * These env bindings are read only as a fallback until the table is seeded.
-   */
-  SENDER_API_ENDPOINT?: string;
-  /**
-   * @deprecated Vendor credentials now live in the email_vendors D1 table.
-   * These env bindings are read only as a fallback until the table is seeded.
-   */
-  SENDER_API_TOKEN?: string;
-
   // True bindings — always present, required to bootstrap config itself.
   D1_DATABASE: D1Database;
 
