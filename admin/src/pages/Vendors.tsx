@@ -252,8 +252,9 @@ export default function Vendors() {
               key: "fromEmail",
               header: "From",
               render: (v: Vendor) => (
-                <span style={{ color: "var(--text-secondary)" }}>
-                  {v.fromEmail}
+                <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>
+                  <span style={{ fontWeight: 500, color: "var(--text-primary)" }}>{v.fromName}</span>
+                  {v.fromName ? " <" : ""}{v.fromEmail}{v.fromName ? ">" : ""}
                 </span>
               ),
             },
