@@ -185,6 +185,21 @@ export default function Vendors() {
     },
   ], [handleToggle]);
 
+  const rowProps = useCallback((_v: Vendor, i: number) => ({
+    draggable: true,
+    onDragStart: () => handleDragStart(i),
+    onDragOver: () => handleDragOver(i),
+    onDragEnd: handleDrop,
+    onTouchStart: (e: React.TouchEvent) => handleTouchStart(i, e),
+    onTouchMove: handleTouchMove,
+    onTouchEnd: handleTouchEnd,
+    style: {
+      cursor: "grab",
+      opacity: dragItem.current === i ? 0.5 : 1,
+      borderTop: dragOverItem.current === i && dragItem.current !== i ? "2px solid var(--accent)" : undefined,
+    },
+  }), []);
+
   return (
     <AnimatedPage>
       <div className="mb-6 flex items-center justify-between" style={{ flexWrap: "wrap", gap: 12 }}>

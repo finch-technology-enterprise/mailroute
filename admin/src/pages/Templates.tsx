@@ -84,6 +84,57 @@ export default function Templates() {
     }
   };
 
+  const columns = useMemo(() => [
+    {
+      key: "slug",
+      header: "Slug",
+      render: (t: Template) => (
+        <span className="code" style={{ fontSize: 13 }}>
+          {t.slug}
+        </span>
+      ),
+    },
+    {
+      key: "subject",
+      header: "Subject",
+      render: (t: Template) => (
+        <span style={{ color: "var(--text-secondary)" }}>
+          {t.subject}
+        </span>
+      ),
+    },
+    {
+      key: "actions",
+      header: "",
+      className: "text-right",
+      render: (t: Template) => (
+        <div className="flex justify-end gap-1">
+          <button
+            className="apple-link"
+            onClick={() => setPreviewTarget(t)}
+          >
+            Preview
+          </button>
+          <button
+            className="apple-link"
+            onClick={() => {
+              setEditingTemplate(t);
+              setFormOpen(true);
+            }}
+          >
+            Edit
+          </button>
+          <button
+            className="apple-link apple-link-danger"
+            onClick={() => setDeleteTarget(t)}
+          >
+            Delete
+          </button>
+        </div>
+      ),
+    },
+  ], []);
+
   return (
     <AnimatedPage>
       <div
@@ -140,56 +191,7 @@ export default function Templates() {
       ) : (
         <Table
           className="table-as-cards"
-          columns={useMemo(() => [
-            {
-              key: "slug",
-              header: "Slug",
-              render: (t: Template) => (
-                <span className="code" style={{ fontSize: 13 }}>
-                  {t.slug}
-                </span>
-              ),
-            },
-            {
-              key: "subject",
-              header: "Subject",
-              render: (t: Template) => (
-                <span style={{ color: "var(--text-secondary)" }}>
-                  {t.subject}
-                </span>
-              ),
-            },
-            {
-              key: "actions",
-              header: "",
-              className: "text-right",
-              render: (t: Template) => (
-                <div className="flex justify-end gap-1">
-                  <button
-                    className="apple-link"
-                    onClick={() => setPreviewTarget(t)}
-                  >
-                    Preview
-                  </button>
-                  <button
-                    className="apple-link"
-                    onClick={() => {
-                      setEditingTemplate(t);
-                      setFormOpen(true);
-                    }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className="apple-link apple-link-danger"
-                    onClick={() => setDeleteTarget(t)}
-                  >
-                    Delete
-                  </button>
-                </div>
-              ),
-            },
-          ], [])}
+          columns={columns}
           data={filtered}
           keyExtractor={(t) => t.id}
           isLoading={loading}
