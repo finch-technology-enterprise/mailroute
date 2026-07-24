@@ -435,7 +435,34 @@ export default function Layout() {
           )}
         </div>
         <NavPills collapsed={collapsed} />
-        <div style={{ padding: collapsed ? "8px" : "8px 12px", marginTop: "auto" }}>
+        <div style={{ padding: collapsed ? "4px 8px" : "4px 12px" }}>
+          <motion.button
+            onClick={() => { clearAuthKey(); window.location.reload(); }}
+            whileTap={{ scale: 0.95 }}
+            style={{
+              width: "100%",
+              padding: collapsed ? "8px 0" : "8px 10px",
+              marginBottom: 2,
+              border: "none",
+              background: "transparent",
+              color: "var(--red)",
+              cursor: "pointer",
+              borderRadius: "var(--radius-md)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: collapsed ? "center" : "flex-start",
+              gap: 10,
+              fontSize: 13,
+              fontWeight: 500,
+              transition: "color 0.15s",
+            }}
+            title="Sign out"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+            {!collapsed && "Sign out"}
+          </motion.button>
           <motion.button
             onClick={() => setCollapsed(!collapsed)}
             whileTap={{ scale: 0.95 }}

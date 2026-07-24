@@ -356,14 +356,12 @@ admin.post("/config/:service/:key/rotate", async (c) => {
     .get();
   if (!row) return c.json(ApiResponse(false, "Not found"), 404);
   const newValue = generateSecret();
-  const encrypted = await encrypt(newValue, key);
   await db
     .update(ServiceConfig)
-    .set({ value: encrypted })
+    .set({ value: newValue, updatedAt: new Date().toISOString() })
     .where(and(eq(ServiceConfig.service, service), eq(ServiceConfig.key, k)))
     .execute();
   ConfigService.invalidateCache();
-  await logActivity(c.env, "config_rotated", `Config "${service}/${k}" rotated`);
   return c.json(ApiResponse(true, "Rotated", { value: newValue }));
 });
 
