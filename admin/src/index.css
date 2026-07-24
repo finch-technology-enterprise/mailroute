@@ -545,9 +545,7 @@ textarea.apple-input {
   left: 0;
   right: 0;
   z-index: 30;
-  background: var(--bg-sidebar);
-  backdrop-filter: blur(40px) saturate(180%);
-  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  background: var(--bg-secondary);
   border-top: 1px solid var(--border);
   padding-bottom: var(--sab);
   display: none;
@@ -647,7 +645,7 @@ body:has(.modal-overlay) .bottom-nav {
     margin-left: 0 !important;
     padding: 20px 16px !important;
     padding-bottom: calc(
-      var(--bottom-nav-height) + var(--sab) + 20px
+      var(--bottom-nav-height) + var(--sab) + 24px
     ) !important;
   }
   .bottom-nav-inner {
@@ -714,7 +712,7 @@ body:has(.modal-overlay) .bottom-nav {
   main {
     padding: 16px 12px !important;
     padding-bottom: calc(
-      var(--bottom-nav-height) + var(--sab) + 16px
+      var(--bottom-nav-height) + var(--sab) + 24px
     ) !important;
   }
   .bottom-nav-inner {
