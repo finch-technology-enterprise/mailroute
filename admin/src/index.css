@@ -532,7 +532,7 @@ textarea.apple-input {
   transform: rotate(45deg);
 }
 
-/* Bottom tab bar (mobile) */
+/* Bottom tab bar (mobile) — Apple Design */
 .bottom-nav {
   position: fixed;
   bottom: 0;
@@ -556,8 +556,8 @@ body:has(.modal-overlay) .bottom-nav {
   display: flex;
   align-items: stretch;
   height: var(--bottom-nav-height);
-  padding: 6px 8px;
-  gap: 2px;
+  padding: 4px 6px;
+  gap: 1px;
 }
 
 .bottom-nav-item {
@@ -566,17 +566,27 @@ body:has(.modal-overlay) .bottom-nav {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 2px;
   text-decoration: none;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
   color: var(--text-tertiary);
   letter-spacing: -0.01em;
   -webkit-tap-highlight-color: transparent;
   position: relative;
-  transition: color 0.15s ease;
+  transition: color 0.12s ease;
   min-height: 44px;
   border-radius: var(--radius-md);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 2px 4px;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.bottom-nav-item:active {
+  transform: scale(0.95);
 }
 
 .bottom-nav-item.active {
@@ -588,13 +598,33 @@ body:has(.modal-overlay) .bottom-nav {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
-  transition: transform 0.15s ease;
+  width: 24px;
+  height: 24px;
+  transition: transform 0.12s ease;
+  position: relative;
+  z-index: 1;
 }
 
 .bottom-nav-item.active .bottom-nav-icon {
-  transform: scale(1.05);
+  transform: scale(1.0);
+}
+
+/* Active pill — subtle, like iOS tab bar */
+.bottom-nav-pill {
+  position: absolute;
+  top: 2px;
+  left: 6px;
+  right: 6px;
+  bottom: 2px;
+  border-radius: 10px;
+  background: rgba(0, 113, 227, 0.06);
+  pointer-events: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .bottom-nav-pill {
+    background: rgba(10, 132, 255, 0.1);
+  }
 }
 
 @media (max-width: 768px) {
@@ -611,6 +641,15 @@ body:has(.modal-overlay) .bottom-nav {
     padding-bottom: calc(
       var(--bottom-nav-height) + var(--sab) + 20px
     ) !important;
+  }
+  .bottom-nav-inner {
+    height: 56px;
+    padding: 3px 6px;
+  }
+  .bottom-nav-item {
+    font-size: 10px;
+    min-height: 40px;
+    gap: 2px;
   }
   .card {
     border-radius: var(--radius-lg);
@@ -671,17 +710,29 @@ body:has(.modal-overlay) .bottom-nav {
     ) !important;
   }
   .bottom-nav-inner {
-    padding: 4px 4px;
-    gap: 1px;
-    height: 56px;
+    padding: 2px 4px;
+    gap: 0;
+    height: 52px;
   }
   .bottom-nav-item {
     min-height: 36px;
-    font-size: 10px;
+    font-size: 9px;
+    gap: 1px;
+  }
+  .bottom-nav-icon {
+    width: 20px;
+    height: 20px;
   }
   .bottom-nav-icon span {
-    width: 18px !important;
-    height: 18px !important;
+    width: 16px !important;
+    height: 16px !important;
+  }
+  .bottom-nav-pill {
+    top: 1px;
+    left: 4px;
+    right: 4px;
+    bottom: 1px;
+    border-radius: 8px;
   }
   .apple-table {
     font-size: 13px;

@@ -269,11 +269,13 @@ function BottomNav() {
             activeTo === item.to ||
             (item.to !== "/" && activeTo.startsWith(item.to));
           return (
-            <button
+            <motion.button
               key={item.to}
               type="button"
-              className="bottom-nav-item"
+              className={"bottom-nav-item" + (isActive ? " active" : "")}
               onClick={() => navigate(item.to)}
+              whileTap={{ scale: 0.93 }}
+              transition={{ type: "spring", bounce: 0, duration: 0.12 }}
               style={{ position: "relative" }}
             >
               {isActive && (
@@ -283,7 +285,7 @@ function BottomNav() {
                   transition={{ type: "spring", bounce: 0, duration: 0.35 }}
                 />
               )}
-              <span className="bottom-nav-icon" style={{ position: "relative", zIndex: 1 }}>
+              <span className="bottom-nav-icon">
                 <span
                   dangerouslySetInnerHTML={{ __html: item.icon }}
                   style={{ width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center", color: isActive ? "var(--accent)" : undefined }}
@@ -296,24 +298,27 @@ function BottomNav() {
                   fontSize: 10,
                   fontWeight: isActive ? 600 : 500,
                   color: isActive ? "var(--accent)" : "var(--text-tertiary)",
+                  lineHeight: 1.2,
                 }}
               >
                 {item.label}
               </span>
-            </button>
+            </motion.button>
           );
         })}
-        <button
+        <motion.button
           type="button"
           className="bottom-nav-item"
           onClick={() => { clearAuthKey(); window.location.reload(); }}
-          style={{ flex: "0 0 36px", minWidth: 36 }}
+          whileTap={{ scale: 0.93 }}
+          transition={{ type: "spring", bounce: 0, duration: 0.12 }}
+          style={{ flex: "0 0 38px", minWidth: 38 }}
           aria-label="Sign out"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--red)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
           </svg>
-        </button>
+        </motion.button>
       </div>
     </nav>
   );
