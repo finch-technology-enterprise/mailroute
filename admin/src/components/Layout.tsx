@@ -425,7 +425,7 @@ export default function Layout() {
     >
       <nav
         className="sidebar-nav glass-sidebar flex-col fixed h-screen z-10"
-        style={{ width: sidebarW, overflow: "hidden", transition: "width 0.2s cubic-bezier(0.16, 1, 0.3, 1)" }}
+        style={{ width: sidebarW, overflow: "visible", transition: "width 0.2s cubic-bezier(0.16, 1, 0.3, 1)" }}
       >
         <div style={{ padding: collapsed ? "28px 0" : "28px 20px 0", display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "space-between", marginBottom: collapsed ? 24 : 32 }}>
           {collapsed ? (
