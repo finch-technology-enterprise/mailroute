@@ -14,12 +14,11 @@ interface LogEntry {
   createdAt: string;
 }
 
-function StatCard({ label, value, actionLabel, onClick, index }: {
+function StatCard({ label, value, actionLabel, onClick }: {
   label: string;
   value: string;
   actionLabel: string;
   onClick: () => void;
-  index: number;
 }) {
   const iconMap: Record<string, string> = {
     Vendors: "<path d='M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2'/><circle cx='9' cy='7' r='4'/><path d='M23 21v-2a4 4 0 0 0-3-3.87'/><path d='M16 3.13a4 4 0 0 1 0 7.75'/>",
@@ -33,7 +32,7 @@ function StatCard({ label, value, actionLabel, onClick, index }: {
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ type: "spring", bounce: 0, duration: 0.45, delay: index * 0.07 }}
+      transition={{ type: "spring", bounce: 0, duration: 0.35 }}
       className="stat-card p-6"
       style={{ display: "flex", flexDirection: "column" }}
     >
@@ -114,11 +113,11 @@ export default function Dashboard() {
       ) : (
         <div className="flex flex-col gap-6">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            <StatCard label="Vendors" value={String(stats?.vendorCount ?? 0)} actionLabel="Manage" onClick={() => navigate("/vendors")} index={0} />
-            <StatCard label="Templates" value={String(stats?.templateCount ?? 0)} actionLabel="Manage" onClick={() => navigate("/templates")} index={1} />
-            <StatCard label="Test Send" value="" actionLabel="Send test" onClick={() => navigate("/test-send")} index={2} />
-            <StatCard label="Activity" value="" actionLabel="View log" onClick={() => navigate("/activity")} index={3} />
-            <StatCard label="Config" value="" actionLabel="Settings" onClick={() => navigate("/config")} index={4} />
+            <StatCard label="Vendors" value={String(stats?.vendorCount ?? 0)} actionLabel="Manage" onClick={() => navigate("/vendors")} />
+            <StatCard label="Templates" value={String(stats?.templateCount ?? 0)} actionLabel="Manage" onClick={() => navigate("/templates")} />
+            <StatCard label="Test Send" value="" actionLabel="Send test" onClick={() => navigate("/test-send")} />
+            <StatCard label="Activity" value="" actionLabel="View log" onClick={() => navigate("/activity")} />
+            <StatCard label="Config" value="" actionLabel="Settings" onClick={() => navigate("/config")} />
           </div>
 
           {recentLogs.length > 0 && (
