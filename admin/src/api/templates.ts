@@ -5,11 +5,16 @@ export function listTemplates(): Promise<ApiResponse<Template[]>> {
   return get("/templates");
 }
 
-export function createTemplate(data: TemplateFormData): Promise<ApiResponse<Template>> {
+export function createTemplate(
+  data: TemplateFormData,
+): Promise<ApiResponse<Template>> {
   return post("/templates", data);
 }
 
-export function updateTemplate(id: string, data: Partial<TemplateFormData>): Promise<ApiResponse<Template>> {
+export function updateTemplate(
+  id: string,
+  data: Partial<TemplateFormData>,
+): Promise<ApiResponse<Template>> {
   return put(`/templates/${id}`, data);
 }
 

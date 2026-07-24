@@ -5,11 +5,16 @@ export function listVendors(): Promise<ApiResponse<Vendor[]>> {
   return get("/vendors");
 }
 
-export function createVendor(data: VendorFormData): Promise<ApiResponse<Vendor>> {
+export function createVendor(
+  data: VendorFormData,
+): Promise<ApiResponse<Vendor>> {
   return post("/vendors", data);
 }
 
-export function updateVendor(id: string, data: Partial<VendorFormData>): Promise<ApiResponse<Vendor>> {
+export function updateVendor(
+  id: string,
+  data: Partial<VendorFormData>,
+): Promise<ApiResponse<Vendor>> {
   return put(`/vendors/${id}`, data);
 }
 

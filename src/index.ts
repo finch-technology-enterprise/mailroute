@@ -22,7 +22,19 @@ const api = new Hono<{ Bindings: CloudflareBindings }>().basePath("/api");
 api.use(
   "*",
   requestId(),
-  secureHeaders(),
+  secureHeaders({
+    contentSecurityPolicy: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+    },
+  }),
   bodyLimit({
     maxSize: MAX_BODY_SIZE,
     onError: (c) => {
@@ -48,7 +60,9 @@ app.get("/admin*", async (c) => {
   const reqUrl = new URL(path, "http://assets");
   const res = await c.env.ADMIN_ASSETS.fetch(reqUrl);
   if (res.status === 200) return res;
-  const fallback = await c.env.ADMIN_ASSETS.fetch(new URL("/index.html", "http://assets"));
+  const fallback = await c.env.ADMIN_ASSETS.fetch(
+    new URL("/index.html", "http://assets"),
+  );
   if (fallback.status === 200) return fallback;
   return c.text("Not found", 404);
 });

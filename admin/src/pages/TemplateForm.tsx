@@ -11,14 +11,23 @@ interface TemplateFormProps {
 
 const emptyForm: TemplateFormData = { slug: "", subject: "", content: "" };
 
-export default function TemplateForm({ open, template, onSave, onClose }: TemplateFormProps) {
+export default function TemplateForm({
+  open,
+  template,
+  onSave,
+  onClose,
+}: TemplateFormProps) {
   const [form, setForm] = useState<TemplateFormData>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (template) {
-      setForm({ slug: template.slug, subject: template.subject, content: template.content });
+      setForm({
+        slug: template.slug,
+        subject: template.subject,
+        content: template.content,
+      });
     } else {
       setForm(emptyForm);
     }
@@ -29,9 +38,18 @@ export default function TemplateForm({ open, template, onSave, onClose }: Templa
     e.preventDefault();
     setError("");
 
-    if (!/^[a-z0-9-]+$/.test(form.slug)) { setError("Slug must be lowercase alphanumeric with hyphens only"); return; }
-    if (!form.subject.trim()) { setError("Subject is required"); return; }
-    if (!form.content.trim()) { setError("Content is required"); return; }
+    if (!/^[a-z0-9-]+$/.test(form.slug)) {
+      setError("Slug must be lowercase alphanumeric with hyphens only");
+      return;
+    }
+    if (!form.subject.trim()) {
+      setError("Subject is required");
+      return;
+    }
+    if (!form.content.trim()) {
+      setError("Content is required");
+      return;
+    }
 
     setSaving(true);
     try {
@@ -67,26 +85,65 @@ export default function TemplateForm({ open, template, onSave, onClose }: Templa
             style={{ maxWidth: 600 }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="mb-6">{template ? "Edit Template" : "Add Template"}</h2>
+            <h2 className="mb-6">
+              {template ? "Edit Template" : "Add Template"}
+            </h2>
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
                 <label className="apple-label">Slug</label>
-                <input className="apple-input code" value={form.slug} onChange={(e) => set("slug", e.target.value)} disabled={!!template} required placeholder="e.g., welcome-email" />
-                <p className="apple-hint">Lowercase letters, numbers, and hyphens only.</p>
+                <input
+                  className="apple-input code"
+                  value={form.slug}
+                  onChange={(e) => set("slug", e.target.value)}
+                  disabled={!!template}
+                  required
+                  placeholder="e.g., welcome-email"
+                />
+                <p className="apple-hint">
+                  Lowercase letters, numbers, and hyphens only.
+                </p>
               </div>
               <div>
                 <label className="apple-label">Subject</label>
-                <input className="apple-input" value={form.subject} onChange={(e) => set("subject", e.target.value)} required placeholder="Welcome to {{app_name}}!" />
-                <p className="apple-hint">Use <code>{'{{key}}'}</code> for placeholders.</p>
+                <input
+                  className="apple-input"
+                  value={form.subject}
+                  onChange={(e) => set("subject", e.target.value)}
+                  required
+                  placeholder="Welcome to {{app_name}}!"
+                />
+                <p className="apple-hint">
+                  Use <code>{"{{key}}"}</code> for placeholders.
+                </p>
               </div>
               <div>
                 <label className="apple-label">Content (HTML)</label>
-                <textarea className="apple-input code" rows={12} value={form.content} onChange={(e) => set("content", e.target.value)} required placeholder="<h1>Welcome, {{name}}!</h1>" />
+                <textarea
+                  className="apple-input code"
+                  rows={12}
+                  value={form.content}
+                  onChange={(e) => set("content", e.target.value)}
+                  required
+                  placeholder="<h1>Welcome, {{name}}!</h1>"
+                />
               </div>
               {error && <div className="apple-error">{error}</div>}
               <div className="flex justify-end gap-3 pt-2">
-                <button type="button" className="apple-btn apple-btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
-                <motion.button type="submit" className="apple-btn apple-btn-primary" disabled={saving} whileTap={{ scale: 0.97 }} transition={{ type: "spring", bounce: 0, duration: 0.12 }}>
+                <button
+                  type="button"
+                  className="apple-btn apple-btn-secondary"
+                  onClick={onClose}
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+                <motion.button
+                  type="submit"
+                  className="apple-btn apple-btn-primary"
+                  disabled={saving}
+                  whileTap={{ scale: 0.97 }}
+                  transition={{ type: "spring", bounce: 0, duration: 0.12 }}
+                >
                   {saving ? "Saving..." : "Save"}
                 </motion.button>
               </div>

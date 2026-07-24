@@ -39,8 +39,22 @@ export default function ConfirmDialog({
             style={{ maxWidth: 400 }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="mb-2 text-xl" style={{ fontWeight: 600, letterSpacing: "-0.02em" }}>{title}</h2>
-            <p className="mb-8" style={{ color: "var(--text-secondary)", fontSize: 14, lineHeight: 1.5 }}>{message}</p>
+            <h2
+              className="mb-2 text-xl"
+              style={{ fontWeight: 600, letterSpacing: "-0.02em" }}
+            >
+              {title}
+            </h2>
+            <p
+              className="mb-8"
+              style={{
+                color: "var(--text-secondary)",
+                fontSize: 14,
+                lineHeight: 1.5,
+              }}
+            >
+              {message}
+            </p>
             <div className="flex justify-end gap-3">
               <motion.button
                 className="apple-btn apple-btn-secondary"

@@ -4,17 +4,11 @@ import { HTTPException } from "hono/http-exception";
 import { LogToNewRelic } from "../utils/helpers.util";
 import { ApiResponse } from "../utils/response.util";
 
-export const ErrorHandler = (error: any, c: Context) => {
+export const ErrorHandler = (error: unknown, c: Context) => {
   const status = error instanceof HTTPException ? error.status : 500;
 
-  // Full detail is logged server-side only — never returned to the client.
-  const cause = error?.cause || {};
   const internalDetail =
-    cause.sqlMessage ||
-    cause.code ||
-    cause.message ||
-    error?.message ||
-    "Internal Server Error";
+    error instanceof Error ? error.message : "Internal Server Error";
 
   LogToNewRelic(c, `[${status}] ${internalDetail}`, {
     level: "ERROR",

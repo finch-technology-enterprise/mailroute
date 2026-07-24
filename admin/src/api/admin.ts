@@ -5,6 +5,8 @@ export function getStats(): Promise<ApiResponse<Stats>> {
   return get("/stats");
 }
 
-export function sendTestEmail(data: TestSendPayload): Promise<ApiResponse<null>> {
+export function sendTestEmail(
+  data: TestSendPayload,
+): Promise<ApiResponse<null>> {
   return post("/test-send", data);
 }

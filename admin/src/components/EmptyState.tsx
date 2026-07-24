@@ -7,7 +7,12 @@ interface EmptyStateProps {
   onAction?: () => void;
 }
 
-export default function EmptyState({ title, description, actionLabel, onAction }: EmptyStateProps) {
+export default function EmptyState({
+  title,
+  description,
+  actionLabel,
+  onAction,
+}: EmptyStateProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -30,8 +35,19 @@ export default function EmptyState({ title, description, actionLabel, onAction }
       >
         +
       </div>
-      <h3 className="mb-2 text-lg" style={{ fontWeight: 600 }}>{title}</h3>
-      <p className="mb-6 max-w-sm" style={{ color: "var(--text-secondary)", fontSize: 14, lineHeight: 1.5 }}>{description}</p>
+      <h3 className="mb-2 text-lg" style={{ fontWeight: 600 }}>
+        {title}
+      </h3>
+      <p
+        className="mb-6 max-w-sm"
+        style={{
+          color: "var(--text-secondary)",
+          fontSize: 14,
+          lineHeight: 1.5,
+        }}
+      >
+        {description}
+      </p>
       {actionLabel && onAction && (
         <motion.button
           className="apple-btn apple-btn-primary"

@@ -5,15 +5,21 @@ import { ConfigService } from "../services/config.service";
 /**
  * Utility to flatten nested objects into "dot" notation like Laravel's Arr::dot()
  */
-export function flattenObject(obj: any, prefix = ""): Record<string, any> {
-  return Object.keys(obj).reduce((acc: any, k) => {
+export function flattenObject(
+  obj: Record<string, unknown>,
+  prefix = "",
+): Record<string, unknown> {
+  return Object.keys(obj).reduce((acc: Record<string, unknown>, k) => {
     const pre = prefix.length ? prefix + "." : "";
     if (
       typeof obj[k] === "object" &&
       obj[k] !== null &&
       !Array.isArray(obj[k])
     ) {
-      Object.assign(acc, flattenObject(obj[k], pre + k));
+      Object.assign(
+        acc,
+        flattenObject(obj[k] as Record<string, unknown>, pre + k),
+      );
     } else {
       acc[pre + k] = obj[k];
     }
@@ -81,46 +87,4 @@ export function LogToNewRelic(
       }
     })(),
   );
-}
-
-export const hoursToSeconds = (hours: number) => hours * 60 * 60;
-export const daysToSeconds = (days: number) => days * 24 * 60 * 60;
-export const weeksToSeconds = (weeks: number) => weeks * 7 * 24 * 60 * 60;
-
-export function date(
-  formatStr: string = "Y-m-d H:i:s",
-  timeZone?: string,
-): string {
-  timeZone ??=
-    (globalThis as unknown as Record<string, string | undefined>).TIMEZONE ||
-    "Asia/Kuala_Lumpur";
-  const now = new Date();
-
-  const formatter = new Intl.DateTimeFormat("en-GB", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-    timeZone: timeZone,
-  });
-
-  const parts = formatter.formatToParts(now);
-  const p = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-
-  // Map PHP format characters to Intl parts
-  const map: Record<string, string> = {
-    Y: p.year, // 2026
-    y: p.year.slice(-2), // 26
-    m: p.month, // 05
-    d: p.day, // 13
-    H: p.hour, // 13
-    i: p.minute, // 20
-    s: p.second, // 59
-  };
-
-  // Replace format characters with actual values
-  return formatStr.replace(/[YymdHis]/g, (match) => map[match] || match);
 }

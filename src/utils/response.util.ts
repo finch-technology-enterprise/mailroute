@@ -1,8 +1,8 @@
 // src/utils/response.util.ts
-export const ApiResponse = (
+export const ApiResponse = <T = null>(
   success: boolean,
   message?: string | null,
-  data: any = null,
+  data: T = null as unknown as T,
 ) => {
   return {
     success,

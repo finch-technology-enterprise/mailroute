@@ -1,4 +1,10 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  type ReactNode,
+} from "react";
 import { motion, AnimatePresence } from "motion/react";
 
 type ToastType = "success" | "error" | "info";
@@ -32,12 +38,24 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     }, 3000);
   }, []);
 
-  const remove = (id: number) => setToasts((prev) => prev.filter((t) => t.id !== id));
+  const remove = (id: number) =>
+    setToasts((prev) => prev.filter((t) => t.id !== id));
 
   return (
     <ToastContext.Provider value={{ toast }}>
       {children}
-      <div style={{ position: "fixed", top: 16, right: 16, zIndex: 100, display: "flex", flexDirection: "column", gap: 8, pointerEvents: "none" }}>
+      <div
+        style={{
+          position: "fixed",
+          top: 16,
+          right: 16,
+          zIndex: 100,
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+          pointerEvents: "none",
+        }}
+      >
         <AnimatePresence>
           {toasts.map((t) => (
             <motion.div
@@ -56,12 +74,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 fontWeight: 500,
                 maxWidth: 360,
                 boxShadow: "var(--shadow-lg)",
-                background: t.type === "success" ? "var(--green)" : t.type === "error" ? "var(--red)" : "var(--accent)",
+                background:
+                  t.type === "success"
+                    ? "var(--green)"
+                    : t.type === "error"
+                      ? "var(--red)"
+                      : "var(--accent)",
                 color: "#fff",
               }}
             >
               <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                {t.type === "success" ? "✓" : t.type === "error" ? "✕" : "ℹ"} {t.message}
+                {t.type === "success" ? "✓" : t.type === "error" ? "✕" : "ℹ"}{" "}
+                {t.message}
               </span>
             </motion.div>
           ))}

@@ -52,3 +52,18 @@ export const EmailVendor = sqliteTable("email_vendors", {
 });
 
 export type EmailVendorRow = typeof EmailVendor.$inferSelect;
+
+export const SendLog = sqliteTable("send_logs", {
+  id: text("id").primaryKey(),
+  vendorId: text("vendor_id").notNull(),
+  vendorName: text("vendor_name").notNull(),
+  toEmail: text("to_email").notNull(),
+  subject: text("subject").notNull(),
+  status: text("status").notNull(),
+  error: text("error"),
+  templateSlug: text("template_slug"),
+  durationMs: integer("duration_ms"),
+  createdAt: text("created_at").notNull(),
+});
+
+export type SendLogRow = typeof SendLog.$inferSelect;

@@ -15,10 +15,10 @@ const REDACTED_BODY_FIELDS = new Set([
 ]);
 const REDACTED = "[REDACTED]";
 
-function redactBody(body: any): any {
+function redactBody(body: unknown): unknown {
   if (!body || typeof body !== "object" || Array.isArray(body)) return body;
-  const out: Record<string, any> = {};
-  for (const [key, value] of Object.entries(body)) {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(body as Record<string, unknown>)) {
     if (REDACTED_BODY_FIELDS.has(key.toLowerCase())) {
       out[key] = REDACTED;
     } else if (key.toLowerCase() === "content" && typeof value === "string") {

@@ -4,16 +4,54 @@ import { motion } from "motion/react";
 import { getStats } from "../api/admin";
 import type { Stats } from "../types";
 
-function StatCard({ label, value, actionLabel, onClick, index }: { label: string; value: string; actionLabel: string; onClick: () => void; index: number }) {
+function StatCard({
+  label,
+  value,
+  actionLabel,
+  onClick,
+  index,
+}: {
+  label: string;
+  value: string;
+  actionLabel: string;
+  onClick: () => void;
+  index: number;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ type: "spring", bounce: 0, duration: 0.4, delay: index * 0.08 }}
+      transition={{
+        type: "spring",
+        bounce: 0,
+        duration: 0.4,
+        delay: index * 0.08,
+      }}
       className="card p-7"
     >
-      <p className="text-sm font-medium" style={{ color: "var(--text-secondary)", letterSpacing: "0.02em", textTransform: "uppercase", fontSize: 11 }}>{label}</p>
-      <p className="mt-3" style={{ fontSize: 40, fontWeight: 700, letterSpacing: "-0.04em", lineHeight: 1, color: "var(--text-primary)" }}>{value}</p>
+      <p
+        className="text-sm font-medium"
+        style={{
+          color: "var(--text-secondary)",
+          letterSpacing: "0.02em",
+          textTransform: "uppercase",
+          fontSize: 11,
+        }}
+      >
+        {label}
+      </p>
+      <p
+        className="mt-3"
+        style={{
+          fontSize: 40,
+          fontWeight: 700,
+          letterSpacing: "-0.04em",
+          lineHeight: 1,
+          color: "var(--text-primary)",
+        }}
+      >
+        {value}
+      </p>
       <motion.button
         className="apple-btn-ghost mt-5 -ml-2"
         onClick={onClick}
@@ -50,18 +88,65 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {[1, 2, 3].map((i) => (
             <div key={i} className="card p-7">
-              <div className="skeleton" style={{ height: 11, width: "40%", background: "var(--border)", borderRadius: "var(--radius-sm)", marginBottom: 16 }} />
-              <div className="skeleton" style={{ height: 40, width: "30%", background: "var(--border)", borderRadius: "var(--radius-sm)" }} />
+              <div
+                className="skeleton"
+                style={{
+                  height: 11,
+                  width: "40%",
+                  background: "var(--border)",
+                  borderRadius: "var(--radius-sm)",
+                  marginBottom: 16,
+                }}
+              />
+              <div
+                className="skeleton"
+                style={{
+                  height: 40,
+                  width: "30%",
+                  background: "var(--border)",
+                  borderRadius: "var(--radius-sm)",
+                }}
+              />
             </div>
           ))}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-5 md:grid-cols-3 lg:grid-cols-5">
-          <StatCard label="Vendors" value={String(stats?.vendorCount ?? 0)} actionLabel="Manage" onClick={() => navigate("/vendors")} index={0} />
-          <StatCard label="Templates" value={String(stats?.templateCount ?? 0)} actionLabel="Manage" onClick={() => navigate("/templates")} index={1} />
-          <StatCard label="Test Send" value="" actionLabel="Send test" onClick={() => navigate("/test-send")} index={2} />
-          <StatCard label="Activity" value="" actionLabel="View log" onClick={() => navigate("/activity")} index={3} />
-          <StatCard label="Config" value="" actionLabel="Settings" onClick={() => navigate("/config")} index={4} />
+          <StatCard
+            label="Vendors"
+            value={String(stats?.vendorCount ?? 0)}
+            actionLabel="Manage"
+            onClick={() => navigate("/vendors")}
+            index={0}
+          />
+          <StatCard
+            label="Templates"
+            value={String(stats?.templateCount ?? 0)}
+            actionLabel="Manage"
+            onClick={() => navigate("/templates")}
+            index={1}
+          />
+          <StatCard
+            label="Test Send"
+            value=""
+            actionLabel="Send test"
+            onClick={() => navigate("/test-send")}
+            index={2}
+          />
+          <StatCard
+            label="Activity"
+            value=""
+            actionLabel="View log"
+            onClick={() => navigate("/activity")}
+            index={3}
+          />
+          <StatCard
+            label="Config"
+            value=""
+            actionLabel="Settings"
+            onClick={() => navigate("/config")}
+            index={4}
+          />
         </div>
       )}
     </motion.div>

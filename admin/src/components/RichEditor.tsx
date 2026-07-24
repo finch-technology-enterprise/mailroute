@@ -9,7 +9,15 @@ interface RichEditorProps {
   minHeight?: number;
 }
 
-function ToolbarButton({ label, active, onClick }: { label: string; active?: boolean; onClick: () => void }) {
+function ToolbarButton({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active?: boolean;
+  onClick: () => void;
+}) {
   return (
     <motion.button
       type="button"
@@ -34,7 +42,12 @@ function ToolbarButton({ label, active, onClick }: { label: string; active?: boo
   );
 }
 
-export default function RichEditor({ content, onChange, placeholder, minHeight = 280 }: RichEditorProps) {
+export default function RichEditor({
+  content,
+  onChange,
+  placeholder,
+  minHeight = 280,
+}: RichEditorProps) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -55,8 +68,6 @@ export default function RichEditor({ content, onChange, placeholder, minHeight =
 
   if (!editor) return null;
 
-  const toggle = (fn: () => void) => fn();
-
   return (
     <div className="card" style={{ padding: 0, overflow: "hidden" }}>
       <div
@@ -69,17 +80,66 @@ export default function RichEditor({ content, onChange, placeholder, minHeight =
           background: "var(--bg-primary)",
         }}
       >
-        <ToolbarButton label="B" active={editor.isActive("bold")} onClick={() => toggle(() => editor.chain().focus().toggleBold().run())} />
-        <ToolbarButton label="I" active={editor.isActive("italic")} onClick={() => toggle(() => editor.chain().focus().toggleItalic().run())} />
-        <ToolbarButton label="H1" active={editor.isActive("heading", { level: 1 })} onClick={() => toggle(() => editor.chain().focus().toggleHeading({ level: 1 }).run())} />
-        <ToolbarButton label="H2" active={editor.isActive("heading", { level: 2 })} onClick={() => toggle(() => editor.chain().focus().toggleHeading({ level: 2 }).run())} />
-        <ToolbarButton label="H3" active={editor.isActive("heading", { level: 3 })} onClick={() => toggle(() => editor.chain().focus().toggleHeading({ level: 3 }).run())} />
-        <ToolbarButton label="• List" active={editor.isActive("bulletList")} onClick={() => toggle(() => editor.chain().focus().toggleBulletList().run())} />
-        <ToolbarButton label="1. List" active={editor.isActive("orderedList")} onClick={() => toggle(() => editor.chain().focus().toggleOrderedList().run())} />
-        <ToolbarButton label="Blockquote" active={editor.isActive("blockquote")} onClick={() => toggle(() => editor.chain().focus().toggleBlockquote().run())} />
-        <ToolbarButton label="Code" active={editor.isActive("code")} onClick={() => toggle(() => editor.chain().focus().toggleCode().run())} />
-        <ToolbarButton label="Code block" active={editor.isActive("codeBlock")} onClick={() => toggle(() => editor.chain().focus().toggleCodeBlock().run())} />
-        <ToolbarButton label="—" onClick={() => toggle(() => editor.chain().focus().setHorizontalRule().run())} />
+        <ToolbarButton
+          label="B"
+          active={editor.isActive("bold")}
+          onClick={() => editor.chain().focus().toggleBold().run()}
+        />
+        <ToolbarButton
+          label="I"
+          active={editor.isActive("italic")}
+          onClick={() => editor.chain().focus().toggleItalic().run()}
+        />
+        <ToolbarButton
+          label="H1"
+          active={editor.isActive("heading", { level: 1 })}
+          onClick={() =>
+            editor.chain().focus().toggleHeading({ level: 1 }).run()
+          }
+        />
+        <ToolbarButton
+          label="H2"
+          active={editor.isActive("heading", { level: 2 })}
+          onClick={() =>
+            editor.chain().focus().toggleHeading({ level: 2 }).run()
+          }
+        />
+        <ToolbarButton
+          label="H3"
+          active={editor.isActive("heading", { level: 3 })}
+          onClick={() =>
+            editor.chain().focus().toggleHeading({ level: 3 }).run()
+          }
+        />
+        <ToolbarButton
+          label="• List"
+          active={editor.isActive("bulletList")}
+          onClick={() => editor.chain().focus().toggleBulletList().run()}
+        />
+        <ToolbarButton
+          label="1. List"
+          active={editor.isActive("orderedList")}
+          onClick={() => editor.chain().focus().toggleOrderedList().run()}
+        />
+        <ToolbarButton
+          label="Blockquote"
+          active={editor.isActive("blockquote")}
+          onClick={() => editor.chain().focus().toggleBlockquote().run()}
+        />
+        <ToolbarButton
+          label="Code"
+          active={editor.isActive("code")}
+          onClick={() => editor.chain().focus().toggleCode().run()}
+        />
+        <ToolbarButton
+          label="Code block"
+          active={editor.isActive("codeBlock")}
+          onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+        />
+        <ToolbarButton
+          label="—"
+          onClick={() => editor.chain().focus().setHorizontalRule().run()}
+        />
       </div>
       <div onClick={() => editor.commands.focus()}>
         <EditorContent editor={editor} />

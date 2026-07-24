@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { useToast } from "../components/Toast";
 import RichEditor from "../components/RichEditor";
@@ -9,24 +9,44 @@ export default function TestSend() {
   const [subject, setSubject] = useState("");
   const [content, setContent] = useState("");
   const [sending, setSending] = useState(false);
-  const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [result, setResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    setResult(null);
+    setError("");
+  }, [to, subject, content]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setResult(null);
 
-    if (!to.trim()) { setError("Recipient email is required"); return; }
-    if (!subject.trim()) { setError("Subject is required"); return; }
-    if (!content.trim()) { setError("Content is required"); return; }
+    if (!to.trim()) {
+      setError("Recipient email is required");
+      return;
+    }
+    if (!subject.trim()) {
+      setError("Subject is required");
+      return;
+    }
+    if (!content.trim()) {
+      setError("Content is required");
+      return;
+    }
 
     setSending(true);
     try {
       const res = await sendTestEmail({ to, subject, content });
       setResult({ success: res.success, message: res.message || "Email sent" });
     } catch (err) {
-      setResult({ success: false, message: err instanceof Error ? err.message : "Failed to send" });
+      setResult({
+        success: false,
+        message: err instanceof Error ? err.message : "Failed to send",
+      });
     } finally {
       setSending(false);
     }
@@ -67,7 +87,11 @@ export default function TestSend() {
 
           <div>
             <label className="apple-label">Content (HTML)</label>
-            <RichEditor content={content} onChange={setContent} minHeight={280} />
+            <RichEditor
+              content={content}
+              onChange={setContent}
+              minHeight={280}
+            />
           </div>
 
           {error && <div className="apple-error">{error}</div>}
@@ -88,7 +112,9 @@ export default function TestSend() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ type: "spring", bounce: 0, duration: 0.3 }}
-            className={result.success ? "apple-success mt-6" : "apple-error mt-6"}
+            className={
+              result.success ? "apple-success mt-6" : "apple-error mt-6"
+            }
           >
             <p style={{ fontWeight: 600, marginBottom: 2 }}>
               {result.success ? "Sent successfully" : "Send failed"}

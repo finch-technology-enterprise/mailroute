@@ -3,12 +3,13 @@ import { drizzle } from "drizzle-orm/d1";
 import { eq, asc } from "drizzle-orm";
 import { EmailVendor, EmailVendorRow } from "../db/schema";
 import { CloudflareBindings } from "../lib/cloudflare.binding";
+import { TimedCache } from "../utils/cache.util";
 
 const CACHE_TTL_MS = 60_000; // 60s — edits in D1 go live within a minute.
 
 // Module-level cache: a Worker isolate is reused across many requests, so
 // this avoids a D1 read on every send while still picking up vendor changes.
-let cache: { value: EmailVendorRow[]; expiresAt: number } | null = null;
+let cache: TimedCache<EmailVendorRow[]> | null = null;
 
 export class EmailVendorService {
   private db;
@@ -35,6 +36,10 @@ export class EmailVendorService {
 
   /** Clears the in-memory cache (mainly for tests). */
   static clearCache(): void {
+    cache = null;
+  }
+
+  static invalidateCache(): void {
     cache = null;
   }
 }

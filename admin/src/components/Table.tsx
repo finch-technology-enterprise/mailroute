@@ -34,7 +34,12 @@ function SkeletonRow({ columns }: { columns: number }) {
   );
 }
 
-export default function Table<T>({ columns, data, keyExtractor, isLoading }: TableProps<T>) {
+export default function Table<T>({
+  columns,
+  data,
+  keyExtractor,
+  isLoading,
+}: TableProps<T>) {
   if (isLoading) {
     return (
       <div className="card overflow-hidden">
@@ -42,7 +47,9 @@ export default function Table<T>({ columns, data, keyExtractor, isLoading }: Tab
           <thead>
             <tr>
               {columns.map((col) => (
-                <th key={col.key} className={col.className}>{col.header}</th>
+                <th key={col.key} className={col.className}>
+                  {col.header}
+                </th>
               ))}
             </tr>
           </thead>
@@ -63,7 +70,9 @@ export default function Table<T>({ columns, data, keyExtractor, isLoading }: Tab
           <thead>
             <tr>
               {columns.map((col) => (
-                <th key={col.key} className={col.className}>{col.header}</th>
+                <th key={col.key} className={col.className}>
+                  {col.header}
+                </th>
               ))}
             </tr>
           </thead>
@@ -73,11 +82,18 @@ export default function Table<T>({ columns, data, keyExtractor, isLoading }: Tab
                 key={keyExtractor(row)}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ type: "spring", bounce: 0, duration: 0.25, delay: i * 0.03 }}
+                transition={{
+                  type: "spring",
+                  bounce: 0,
+                  duration: 0.25,
+                  delay: i * 0.03,
+                }}
                 style={{ background: "transparent" }}
               >
                 {columns.map((col) => (
-                  <td key={col.key} className={col.className}>{col.render(row)}</td>
+                  <td key={col.key} className={col.className}>
+                    {col.render(row)}
+                  </td>
                 ))}
               </motion.tr>
             ))}

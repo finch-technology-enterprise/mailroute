@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/d1";
 import { inArray } from "drizzle-orm";
 import { ServiceConfig } from "../db/schema";
 import { CloudflareBindings } from "../lib/cloudflare.binding";
+import { TimedCache } from "../utils/cache.util";
 
 /**
  * Identifies this microservice's rows in the shared `service_config` table.
@@ -25,7 +26,7 @@ const CACHE_TTL_MS = 60_000; // 60s — edits in D1 go live within a minute.
 
 // Module-level cache: a Worker isolate is reused across many requests, so
 // this avoids a D1 read on every request while still picking up changes.
-let cache: { value: Record<string, string>; expiresAt: number } | null = null;
+let cache: TimedCache<Record<string, string>> | null = null;
 
 export class ConfigService {
   private db;
@@ -71,6 +72,10 @@ export class ConfigService {
 
   /** Clears the in-memory cache (mainly for tests). */
   static clearCache(): void {
+    cache = null;
+  }
+
+  static invalidateCache(): void {
     cache = null;
   }
 }

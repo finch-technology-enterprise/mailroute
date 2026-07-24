@@ -1,8 +1,10 @@
 // src/services/email.service.ts
 import { Context } from "hono";
+import { drizzle } from "drizzle-orm/d1";
 import { CloudflareBindings } from "../lib/cloudflare.binding";
 import { LogToNewRelic } from "../utils/helpers.util";
 import { EmailVendorService } from "./email-vendor.service";
+import { SendLog } from "../db/schema";
 import { ADAPTERS } from "../vendors";
 
 export interface EmailPayload {
@@ -24,7 +26,10 @@ export class EmailService {
    * next. Throws only when every vendor fails (or none are configured) — the
    * route layer runs this inside waitUntil().catch().
    */
-  async sendEmail(c: Context, payload: EmailPayload) {
+  async sendEmail(
+    c: Context<{ Bindings: CloudflareBindings }>,
+    payload: EmailPayload,
+  ) {
     LogToNewRelic(c, "sendEmail", payload);
 
     const vendors = await this.vendorService.getActiveVendors();
@@ -54,6 +59,21 @@ export class EmailService {
           vendor: vendor.name,
           "context.to": payload.to,
         });
+        await drizzle(c.env.D1_DATABASE)
+          .insert(SendLog)
+          .values({
+            id: crypto.randomUUID(),
+            vendorId: vendor.id,
+            vendorName: vendor.name,
+            toEmail: payload.to,
+            subject: payload.subject,
+            status: "sent",
+            error: null,
+            templateSlug: null,
+            durationMs: null,
+            createdAt: new Date().toISOString(),
+          })
+          .execute();
         return;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -63,6 +83,21 @@ export class EmailService {
           vendor: vendor.name,
           "context.error": message,
         });
+        await drizzle(c.env.D1_DATABASE)
+          .insert(SendLog)
+          .values({
+            id: crypto.randomUUID(),
+            vendorId: vendor.id,
+            vendorName: vendor.name,
+            toEmail: payload.to,
+            subject: payload.subject,
+            status: "failed",
+            error: message,
+            templateSlug: null,
+            durationMs: null,
+            createdAt: new Date().toISOString(),
+          })
+          .execute();
       }
     }
 

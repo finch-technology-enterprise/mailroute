@@ -2,8 +2,12 @@
 
 :root {
   /* Apple Design System Tokens */
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
-  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", system-ui, sans-serif;
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue",
+    system-ui, sans-serif;
+  --font-display:
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue",
+    system-ui, sans-serif;
 
   /* Colors */
   --bg-primary: #f5f5f7;
@@ -83,7 +87,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
@@ -140,7 +146,10 @@ body {
 
 /* 44pt minimum hit targets on touch */
 @media (pointer: coarse) {
-  .apple-btn, .apple-link, .apple-badge, .nav-item {
+  .apple-btn,
+  .apple-link,
+  .apple-badge,
+  .nav-item {
     min-height: 44px;
   }
   .apple-input {
@@ -152,16 +161,28 @@ body {
   }
 }
 
-h1, h2, h3, h4 {
+h1,
+h2,
+h3,
+h4 {
   font-family: var(--font-display);
   font-weight: 600;
   letter-spacing: -0.025em;
   color: var(--text-primary);
 }
 
-h1 { font-size: 28px; line-height: 1.083; }
-h2 { font-size: 22px; line-height: 1.136; }
-h3 { font-size: 18px; line-height: 1.222; }
+h1 {
+  font-size: 28px;
+  line-height: 1.083;
+}
+h2 {
+  font-size: 22px;
+  line-height: 1.136;
+}
+h3 {
+  font-size: 18px;
+  line-height: 1.222;
+}
 
 /* Glass surface */
 .glass {
@@ -184,7 +205,9 @@ h3 { font-size: 18px; line-height: 1.222; }
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
 }
 
 .card:hover {
@@ -202,7 +225,9 @@ h3 { font-size: 18px; line-height: 1.222; }
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -417,9 +442,15 @@ textarea.apple-input {
 
 /* Skeleton loading */
 @keyframes shimmer {
-  0% { opacity: 1; }
-  50% { opacity: 0.4; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 
 .skeleton {
@@ -550,19 +581,46 @@ body:has(.modal-overlay) .bottom-nav {
 }
 
 @media (max-width: 768px) {
-  .sidebar-nav { display: none !important; pointer-events: none; }
-  .bottom-nav { display: flex; }
-  main { margin-left: 0 !important; padding: 20px 16px !important; padding-bottom: calc(var(--bottom-nav-height) + var(--sab) + 20px) !important; }
-  .card { border-radius: var(--radius-lg); }
-  h1 { font-size: 24px; }
-  h2 { font-size: 20px; }
+  .sidebar-nav {
+    display: none !important;
+    pointer-events: none;
+  }
+  .bottom-nav {
+    display: flex;
+  }
+  main {
+    margin-left: 0 !important;
+    padding: 20px 16px !important;
+    padding-bottom: calc(
+      var(--bottom-nav-height) + var(--sab) + 20px
+    ) !important;
+  }
+  .card {
+    border-radius: var(--radius-lg);
+  }
+  h1 {
+    font-size: 24px;
+  }
+  h2 {
+    font-size: 20px;
+  }
 
   /* Table horizontal scroll */
-  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -16px; padding: 0 16px; }
-  .apple-table { min-width: 520px; }
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -16px;
+    padding: 0 16px;
+  }
+  .apple-table {
+    min-width: 520px;
+  }
 
   /* Modal bottom sheet */
-  .modal-overlay { align-items: flex-end; padding-bottom: 0; }
+  .modal-overlay {
+    align-items: flex-end;
+    padding-bottom: 0;
+  }
   .modal-surface {
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
@@ -574,7 +632,7 @@ body:has(.modal-overlay) .bottom-nav {
   }
   /* Drag handle for bottom sheet modal */
   .modal-surface::before {
-    content: '';
+    content: "";
     display: block;
     width: 36px;
     height: 4px;
@@ -582,19 +640,38 @@ body:has(.modal-overlay) .bottom-nav {
     background: var(--border-hover);
     margin: 0 auto 20px;
   }
-  .apple-table th, .apple-table td { padding: 12px; }
+  .apple-table th,
+  .apple-table td {
+    padding: 12px;
+  }
 }
 
 @media (max-width: 480px) {
-  main { padding: 16px 12px !important; padding-bottom: calc(var(--bottom-nav-height) + var(--sab) + 16px) !important; }
-  .apple-table { font-size: 13px; }
-  .apple-table th, .apple-table td { padding: 10px 8px; }
-  .apple-input { font-size: 16px; }
+  main {
+    padding: 16px 12px !important;
+    padding-bottom: calc(
+      var(--bottom-nav-height) + var(--sab) + 16px
+    ) !important;
+  }
+  .apple-table {
+    font-size: 13px;
+  }
+  .apple-table th,
+  .apple-table td {
+    padding: 10px 8px;
+  }
+  .apple-input {
+    font-size: 16px;
+  }
 }
 
 @media (min-width: 769px) {
-  .bottom-nav { display: none !important; }
-  .sidebar-nav { display: flex; }
+  .bottom-nav {
+    display: none !important;
+  }
+  .sidebar-nav {
+    display: flex;
+  }
 }
 
 /* Helper classes */
@@ -604,7 +681,8 @@ body:has(.modal-overlay) .bottom-nav {
   white-space: nowrap;
 }
 
-code, .code {
+code,
+.code {
   font-family: "SF Mono", "SF Pro", Menlo, monospace;
   font-size: 0.9em;
   background: rgba(0, 0, 0, 0.04);
@@ -613,7 +691,8 @@ code, .code {
 }
 
 @media (prefers-color-scheme: dark) {
-  code, .code {
+  code,
+  .code {
     background: rgba(255, 255, 255, 0.06);
   }
 }
