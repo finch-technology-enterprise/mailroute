@@ -343,6 +343,24 @@ admin.post("/config/:service/:key/rotate", async (c) => {
   return c.json(ApiResponse(true, "Rotated", { value: newValue }));
 });
 
+admin.delete("/config/:service/:key", async (c) => {
+  const db = drizzle(c.env.D1_DATABASE);
+  const service = c.req.param("service");
+  const k = c.req.param("key");
+  const row = await db
+    .select()
+    .from(ServiceConfig)
+    .where(and(eq(ServiceConfig.service, service), eq(ServiceConfig.key, k)))
+    .get();
+  if (!row) return c.json(ApiResponse(false, "Not found"), 404);
+  await db
+    .delete(ServiceConfig)
+    .where(and(eq(ServiceConfig.service, service), eq(ServiceConfig.key, k)))
+    .execute();
+  ConfigService.invalidateCache();
+  return c.json(ApiResponse(true, "Config deleted"));
+});
+
 // --- Logs ---
 
 admin.get("/logs", async (c) => {

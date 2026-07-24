@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useToast } from "../components/Toast";
-import { get, put, post } from "../api/client";
+import ConfirmDialog from "../components/ConfirmDialog";
+import { get, put, post, del } from "../api/client";
 import type { ApiResponse } from "../types";
 
 interface ConfigRow {
@@ -190,6 +191,24 @@ export default function Config() {
       toast(err instanceof Error ? err.message : "Failed to create", "error");
     } finally {
       setAdding(false);
+    }
+  };
+
+  const [deleteTarget, setDeleteTarget] = useState<{ service: string; key: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await del(`/config/${encodeURIComponent(deleteTarget.service)}/${encodeURIComponent(deleteTarget.key)}`);
+      setRows((prev) => prev.filter((r) => r.service !== deleteTarget.service || r.key !== deleteTarget.key));
+      setDeleteTarget(null);
+      toast("Config deleted", "success");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Failed to delete", "error");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -393,6 +412,12 @@ export default function Config() {
                                   {rotating.has(id) ? "..." : "Rotate"}
                                 </button>
                               )}
+                              <button
+                                className="apple-link apple-link-danger"
+                                onClick={() => setDeleteTarget({ service: row.service, key: row.key })}
+                              >
+                                Delete
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -469,6 +494,15 @@ export default function Config() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Delete Config"
+        message={`Delete "${deleteTarget?.key}" for service "${deleteTarget?.service}"? This cannot be undone.`}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+        isLoading={deleting}
+      />
     </motion.div>
   );
 }

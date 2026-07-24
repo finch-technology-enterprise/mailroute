@@ -72,6 +72,7 @@ export default function VendorForm({
     if (vendor && !form.apiToken.trim()) {
       const { apiToken, ...rest } = form;
       await onSave(rest as VendorFormData);
+      onClose();
       return;
     }
 
