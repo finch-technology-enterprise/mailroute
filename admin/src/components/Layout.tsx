@@ -276,7 +276,7 @@ function BottomNav() {
           onClick={() => { clearAuthKey(); window.location.reload(); }}
           whileTap={{ scale: 0.93 }}
           transition={{ type: "spring", bounce: 0, duration: 0.12 }}
-          style={{ flex: "0 0 38px", minWidth: 38 }}
+          style={{ flex: 1 }}
           aria-label="Sign out"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--red)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -306,8 +306,8 @@ export default function Layout() {
 
   return (
     <div
-      className="flex min-h-dvh"
-      style={{ background: "var(--bg-primary)", paddingTop: "var(--sat)", minWidth: 0, overflowX: "hidden" }}
+      className="flex h-dvh overflow-hidden"
+      style={{ background: "var(--bg-primary)", paddingTop: "var(--sat)", minWidth: 0 }}
     >
       <nav
         className="sidebar-nav glass-sidebar flex-col fixed h-screen z-10"
@@ -353,13 +353,14 @@ export default function Layout() {
       </nav>
 
       <main
-        className="flex-1"
+        className="flex-1 overflow-y-auto"
         style={{
           marginLeft: sidebarW,
           padding: "40px 36px",
           paddingBottom: 40,
           minWidth: 0,
           transition: "margin-left 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
+          WebkitOverflowScrolling: "touch",
         }}
       >
         <motion.div
