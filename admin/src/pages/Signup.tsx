@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "motion/react";
 import { signup } from "../api/auth";
-import { setToken } from "../api/client";
 
 export default function Signup() {
   const [form, setForm] = useState({ name: "", email: "", password: "", tenantName: "", tenantSlug: "" });
@@ -19,8 +18,7 @@ export default function Signup() {
     setLoading(true);
     try {
       const res = await signup(form);
-      if (res.success && res.data) {
-        setToken(res.data.token);
+      if (res.success) {
         navigate("/?welcome=1");
       } else {
         setError(res.message || "Signup failed");

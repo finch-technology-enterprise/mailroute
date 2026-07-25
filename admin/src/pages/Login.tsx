@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "motion/react";
 import { login } from "../api/auth";
-import { setToken } from "../api/client";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -17,8 +16,7 @@ export default function Login() {
     setLoading(true);
     try {
       const res = await login(email, password);
-      if (res.success && res.data) {
-        setToken(res.data.token);
+      if (res.success) {
         navigate("/");
       } else {
         setError(res.message || "Login failed");

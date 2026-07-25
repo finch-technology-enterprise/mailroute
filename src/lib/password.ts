@@ -51,8 +51,29 @@ export function generateApiKey(): string {
   return "mr_" + toBase64url(bytes);
 }
 
-export async function hashApiKey(apiKey: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const hash = await crypto.subtle.digest("SHA-256", encoder.encode(apiKey));
+const HMAC_KEY_PREFIX = "hmac_v1:";
+
+function textEncoder(): TextEncoder {
+  return new TextEncoder();
+}
+
+export async function hashApiKey(apiKey: string, hmacSecret?: string): Promise<string> {
+  if (hmacSecret) {
+    const enc = textEncoder();
+    const key = await crypto.subtle.importKey(
+      "raw", enc.encode(hmacSecret), { name: "HMAC", hash: "SHA-256" },
+      false, ["sign"],
+    );
+    const sig = await crypto.subtle.sign("HMAC", key, enc.encode(apiKey));
+    return HMAC_KEY_PREFIX + toBase64url(new Uint8Array(sig));
+  }
+  const enc = textEncoder();
+  const hash = await crypto.subtle.digest("SHA-256", enc.encode(apiKey));
+  return toBase64url(new Uint8Array(hash));
+}
+
+export async function hashApiKeyLegacy(apiKey: string): Promise<string> {
+  const enc = textEncoder();
+  const hash = await crypto.subtle.digest("SHA-256", enc.encode(apiKey));
   return toBase64url(new Uint8Array(hash));
 }

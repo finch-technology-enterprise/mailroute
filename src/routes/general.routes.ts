@@ -22,17 +22,17 @@ const jsonBody = <T extends z.ZodTypeAny>(schema: T) =>
     }
   });
 
-// Send in the background but capture failures — otherwise a non-OK response
-// from Sender.net throws into a floating promise and the failure is invisible.
 const sendInBackground = (
   c: Parameters<EmailService["sendEmail"]>[0],
   emailService: EmailService,
   payload: EmailPayload,
+  sendId: string,
 ) => {
   c.executionCtx.waitUntil(
     emailService.sendEmail(c, payload).catch((error: unknown) => {
       LogToNewRelic(c, "sendEmail failed", {
         level: "ERROR",
+        "context.send_id": sendId,
         "context.to": payload.to,
         "context.error": error instanceof Error ? error.message : String(error),
       });
@@ -100,7 +100,19 @@ const sendTemplateSchema = z.object({
 });
 
 general.get("/health", async (c) => {
-  return c.body(null, 200);
+  let dbOk = false;
+  try {
+    await c.env.D1_DATABASE.prepare("SELECT 1").all();
+    dbOk = true;
+  } catch {
+    dbOk = false;
+  }
+  return c.json({
+    status: dbOk ? "healthy" : "degraded",
+    database: dbOk ? "connected" : "unreachable",
+    version: "1.0.0",
+    timestamp: new Date().toISOString(),
+  }, dbOk ? 200 : 503);
 });
 
 general.post(
@@ -123,13 +135,14 @@ general.post(
     }
 
     const emailService = new EmailService(c.env, tenantId);
+    const sendId = crypto.randomUUID();
     sendInBackground(c, emailService, {
       to,
       subject: emailData.subject,
       content: emailData.content,
-    });
+    }, sendId);
 
-    return c.json(ApiResponse(true, "Email is being sent"), 200);
+    return c.json(ApiResponse(true, "Email is being sent", { sendId }), 200);
   },
 );
 
@@ -143,9 +156,10 @@ general.post(
 
     const tenantId = c.get("tenantId");
     const emailService = new EmailService(c.env, tenantId);
-    sendInBackground(c, emailService, { to, subject, content });
+    const sendId = crypto.randomUUID();
+    sendInBackground(c, emailService, { to, subject, content }, sendId);
 
-    return c.json(ApiResponse(true, "Email is being sent"), 200);
+    return c.json(ApiResponse(true, "Email is being sent", { sendId }), 200);
   },
 );
 
@@ -169,13 +183,14 @@ general.post(
     }
 
     const emailService = new EmailService(c.env, tenantId);
+    const sendId = crypto.randomUUID();
     sendInBackground(c, emailService, {
       to,
       subject: subject ?? emailData.subject,
       content: emailData.content,
-    });
+    }, sendId);
 
-    return c.json(ApiResponse(true, "Email is being sent"), 200);
+    return c.json(ApiResponse(true, "Email is being sent", { sendId }), 200);
   },
 );
 

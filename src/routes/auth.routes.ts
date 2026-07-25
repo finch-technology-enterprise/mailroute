@@ -1,14 +1,39 @@
 import { Context, Hono, Next } from "hono";
+import { setCookie, getCookie } from "hono/cookie";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { drizzle } from "drizzle-orm/d1";
-import { eq } from "drizzle-orm";
-import { Tenant, User, ApiKey } from "../db/schema";
+import { eq, and, gt, count as drizzleCount } from "drizzle-orm";
+import { Tenant, User, ApiKey, LoginAttempt } from "../db/schema";
 import { signJWT, verifyJWT } from "../lib/jwt";
 import { generateResetToken, verifyResetToken } from "../lib/reset-token";
 import { hashPassword, verifyPassword, generateApiKey, hashApiKey } from "../lib/password";
 import { ApiResponse } from "../utils/response.util";
 import type { AppEnv } from "../lib/app-env";
+
+const JWT_EXPIRY_SEC = 86400;
+const REFRESH_EXPIRY_SEC = 604800;
+
+function isLocalDev(c: Context<AppEnv>): boolean {
+  const url = new URL(c.req.url);
+  return url.hostname === "localhost" || url.hostname === "127.0.0.1";
+}
+
+function setAuthCookies(c: Context<AppEnv>, token: string, refreshToken: string): void {
+  const opts = {
+    httpOnly: true,
+    secure: !isLocalDev(c),
+    sameSite: "Strict" as const,
+    path: "/api",
+  };
+  setCookie(c, "auth_token", token, { ...opts, maxAge: JWT_EXPIRY_SEC });
+  setCookie(c, "refresh_token", refreshToken, { ...opts, maxAge: REFRESH_EXPIRY_SEC });
+}
+
+function clearAuthCookies(c: Context<AppEnv>): void {
+  setCookie(c, "auth_token", "", { httpOnly: true, path: "/api", maxAge: 0 });
+  setCookie(c, "refresh_token", "", { httpOnly: true, path: "/api", maxAge: 0 });
+}
 
 const auth = new Hono<AppEnv>();
 
@@ -36,7 +61,8 @@ auth.post("/signup", zValidator("json", signupSchema), async (c) => {
 
   const passwordHash = await hashPassword(password);
   const apiKey = generateApiKey();
-  const apiKeyHash = await hashApiKey(apiKey);
+  const hmacSecret = c.env.CONFIG_ENCRYPTION_KEY;
+  const apiKeyHash = await hashApiKey(apiKey, hmacSecret);
   const tenantId = crypto.randomUUID();
   const userId = crypto.randomUUID();
 
@@ -56,7 +82,9 @@ auth.post("/signup", zValidator("json", signupSchema), async (c) => {
     keyPrefix: apiKey.slice(0, 10) + "...",
   }).execute();
 
-  const token = await signJWT({ sub: userId, tenantId, role: "admin" }, c.env.JWT_SECRET);
+  const token = await signJWT({ sub: userId, tenantId, role: "admin" }, c.env.JWT_SECRET, JWT_EXPIRY_SEC);
+  const refreshToken = await signJWT({ sub: userId, tenantId, role: "admin" }, c.env.JWT_SECRET, REFRESH_EXPIRY_SEC);
+  setAuthCookies(c, token, refreshToken);
 
   return c.json(ApiResponse(true, null, {
     user: { id: userId, email, name, role: "admin" },
@@ -70,15 +98,57 @@ const loginSchema = z.object({
   password: z.string().min(1).max(128),
 });
 
+const LOGIN_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_MAX_ATTEMPTS = 5;
+
+async function checkLoginRateLimit(db: ReturnType<typeof drizzle>, email: string): Promise<boolean> {
+  const cutoff = new Date(Date.now() - LOGIN_RATE_LIMIT_WINDOW_MS).toISOString();
+  const result = await db
+    .select({ count: drizzleCount() })
+    .from(LoginAttempt)
+    .where(and(eq(LoginAttempt.email, email), gt(LoginAttempt.attemptedAt, cutoff)))
+    .get();
+  return (result?.count ?? 0) >= LOGIN_MAX_ATTEMPTS;
+}
+
 auth.post("/login", zValidator("json", loginSchema), async (c) => {
   const db = drizzle(c.env.D1_DATABASE);
   const { email, password } = c.req.valid("json");
 
+  const rateLimited = await checkLoginRateLimit(db, email);
+  if (rateLimited) {
+    return c.json(ApiResponse(false, "Too many login attempts. Please try again later."), 429);
+  }
+
   const user = await db.select().from(User).where(eq(User.email, email)).get();
-  if (!user) return c.json(ApiResponse(false, "Invalid email or password"), 401);
+  if (!user) {
+    c.executionCtx.waitUntil(
+      db.insert(LoginAttempt).values({
+        id: crypto.randomUUID(),
+        email,
+        ip: c.req.header("cf-connecting-ip") || "",
+        attemptedAt: new Date().toISOString(),
+      }).execute().catch(() => {}),
+    );
+    return c.json(ApiResponse(false, "Invalid email or password"), 401);
+  }
 
   const valid = await verifyPassword(password, user.passwordHash);
-  if (!valid) return c.json(ApiResponse(false, "Invalid email or password"), 401);
+  if (!valid) {
+    c.executionCtx.waitUntil(
+      db.insert(LoginAttempt).values({
+        id: crypto.randomUUID(),
+        email,
+        ip: c.req.header("cf-connecting-ip") || "",
+        attemptedAt: new Date().toISOString(),
+      }).execute().catch(() => {}),
+    );
+    return c.json(ApiResponse(false, "Invalid email or password"), 401);
+  }
+
+  c.executionCtx.waitUntil(
+    db.delete(LoginAttempt).where(eq(LoginAttempt.email, email)).execute().catch(() => {}),
+  );
 
   const tenant = await db.select().from(Tenant).where(eq(Tenant.id, user.tenantId)).get();
   if (!tenant) return c.json(ApiResponse(false, "Tenant not found"), 404);
@@ -86,7 +156,14 @@ auth.post("/login", zValidator("json", loginSchema), async (c) => {
   const token = await signJWT(
     { sub: user.id, tenantId: user.tenantId, role: user.role },
     c.env.JWT_SECRET,
+    JWT_EXPIRY_SEC,
   );
+  const refreshToken = await signJWT(
+    { sub: user.id, tenantId: user.tenantId, role: user.role },
+    c.env.JWT_SECRET,
+    REFRESH_EXPIRY_SEC,
+  );
+  setAuthCookies(c, token, refreshToken);
 
   return c.json(ApiResponse(true, null, {
     user: { id: user.id, email: user.email, name: user.name, role: user.role },
@@ -172,7 +249,32 @@ auth.post("/change-password", requireAuth, zValidator("json", changePasswordSche
   return c.json(ApiResponse(true, "Password changed successfully"));
 });
 
+auth.post("/refresh", async (c) => {
+  const refreshToken = getCookie(c, "refresh_token");
+  if (!refreshToken) {
+    return c.json(ApiResponse(false, "No refresh token"), 401);
+  }
+  const payload = await verifyJWT(refreshToken, c.env.JWT_SECRET);
+  if (!payload) {
+    clearAuthCookies(c);
+    return c.json(ApiResponse(false, "Invalid or expired refresh token"), 401);
+  }
+  const newToken = await signJWT(
+    { sub: payload.sub, tenantId: payload.tenantId, role: payload.role },
+    c.env.JWT_SECRET,
+    JWT_EXPIRY_SEC,
+  );
+  const newRefreshToken = await signJWT(
+    { sub: payload.sub, tenantId: payload.tenantId, role: payload.role },
+    c.env.JWT_SECRET,
+    REFRESH_EXPIRY_SEC,
+  );
+  setAuthCookies(c, newToken, newRefreshToken);
+  return c.json(ApiResponse(true, null, { token: newToken }));
+});
+
 auth.post("/logout", requireAuth, async (c) => {
+  clearAuthCookies(c);
   return c.json(ApiResponse(true, "Logged out"));
 });
 
@@ -180,11 +282,20 @@ export async function requireAuth(
   c: Context<AppEnv>,
   next: Next,
 ) {
-  const header = c.req.header("Authorization");
-  if (!header?.startsWith("Bearer ")) {
-    return c.json(ApiResponse(false, "Missing Authorization header"), 401);
+  let token: string | undefined;
+
+  const authHeader = c.req.header("Authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    token = authHeader.slice(7);
+  } else {
+    token = getCookie(c, "auth_token");
   }
-  const payload = await verifyJWT(header.slice(7), c.env.JWT_SECRET);
+
+  if (!token) {
+    return c.json(ApiResponse(false, "Authentication required"), 401);
+  }
+
+  const payload = await verifyJWT(token, c.env.JWT_SECRET);
   if (!payload) {
     return c.json(ApiResponse(false, "Invalid or expired token"), 401);
   }

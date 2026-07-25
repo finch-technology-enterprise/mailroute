@@ -1,11 +1,17 @@
 import { Context } from "hono";
 import { drizzle } from "drizzle-orm/d1";
+import { and, eq, gt, count } from "drizzle-orm";
 import { CloudflareBindings } from "../lib/cloudflare.binding";
 import { LogToNewRelic } from "../utils/helpers.util";
 import { EmailVendorService } from "./email-vendor.service";
 import { SendLog } from "../db/schema";
 import { ADAPTERS } from "../vendors";
 import { sendPushNotification } from "./push.service";
+
+const VENDOR_TIMEOUT_MS = 10_000;
+const RETRY_DELAY_MS = 2_000;
+const CIRCUIT_BREAKER_THRESHOLD = 5;
+const CIRCUIT_BREAKER_WINDOW_MS = 300_000;
 
 function redactError(msg: string): string {
   return msg.replace(/(token|key|secret|auth|password|api[_-]?key)[=:]\s*\S+/gi, "$1=[REDACTED]");
@@ -17,13 +23,87 @@ export interface EmailPayload {
   content: string;
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), ms);
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      controller.signal.addEventListener("abort", () => {
+        reject(new Error(`Vendor timeout after ${ms}ms`));
+      });
+    }),
+  ]).finally(() => clearTimeout(timeout));
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export class EmailService {
   private readonly vendorService: EmailVendorService;
+  private readonly env: CloudflareBindings;
   private readonly tenantId: string;
 
   constructor(env: CloudflareBindings, tenantId: string) {
+    this.env = env;
     this.vendorService = new EmailVendorService(env, tenantId);
     this.tenantId = tenantId;
+  }
+
+  private async isVendorInCooldown(vendorId: string): Promise<boolean> {
+    const cutoff = new Date(Date.now() - CIRCUIT_BREAKER_WINDOW_MS).toISOString();
+    const db = drizzle(this.env.D1_DATABASE);
+    const recent = await db
+      .select({ total: count() })
+      .from(SendLog)
+      .where(
+        and(
+          eq(SendLog.vendorId, vendorId),
+          eq(SendLog.status, "failed"),
+          gt(SendLog.createdAt, cutoff),
+          eq(SendLog.tenantId, this.tenantId),
+        ),
+      )
+      .get();
+    return (recent?.total ?? 0) >= CIRCUIT_BREAKER_THRESHOLD;
+  }
+
+  private async recordFailedAttempt(
+    c: Context<any, any, any>,
+    vendor: { id: string; name: string },
+    payload: EmailPayload,
+    message: string,
+    durationMs: number,
+  ) {
+    const redacted = redactError(message);
+    c.executionCtx.waitUntil(
+      drizzle(c.env.D1_DATABASE)
+        .insert(SendLog)
+        .values({
+          id: crypto.randomUUID(),
+          tenantId: this.tenantId,
+          vendorId: vendor.id,
+          vendorName: vendor.name,
+          toEmail: payload.to,
+          subject: payload.subject,
+          status: "failed",
+          error: redacted,
+          durationMs,
+          createdAt: new Date().toISOString(),
+        })
+        .execute()
+        .catch(() => {}),
+    );
+    c.executionCtx.waitUntil(
+      sendPushNotification(c.env, {
+        title: "Email failed",
+        body: `${vendor.name}: ${message.slice(0, 200)}`,
+        tag: "email-failed",
+      }).catch((e) => {
+        console.error("Push notification failed:", e);
+      }),
+    );
   }
 
   async sendEmail(
@@ -49,71 +129,152 @@ export class EmailService {
         continue;
       }
 
-      try {
-        await adapter.send({
-          endpoint: vendor.apiEndpoint,
-          token: vendor.apiToken,
-          from: { email: vendor.fromEmail, name: vendor.fromName },
-          to: payload.to,
-          subject: payload.subject,
-          html: payload.content,
-          config: parseConfig(vendor.config),
+      const inCooldown = await this.isVendorInCooldown(vendor.id);
+      if (inCooldown) {
+        errors.push(`${vendor.name}: skipped (circuit breaker)`);
+        LogToNewRelic(c, "sendEmail:circuit-breaker", {
+          level: "WARN",
+          vendor: vendor.name,
         });
+        continue;
+      }
+
+      const attemptSend = async (): Promise<void> => {
+        await withTimeout(
+          adapter.send({
+            endpoint: vendor.apiEndpoint,
+            token: vendor.apiToken,
+            from: { email: vendor.fromEmail, name: vendor.fromName },
+            to: payload.to,
+            subject: payload.subject,
+            html: payload.content,
+            config: parseConfig(vendor.config),
+          }),
+          VENDOR_TIMEOUT_MS,
+        );
+      };
+
+      const startTime = Date.now();
+
+      try {
+        await attemptSend();
+        const durationMs = Date.now() - startTime;
         LogToNewRelic(c, "sendEmail:success", {
           vendor: vendor.name,
           "context.to": payload.to,
         });
-        await drizzle(c.env.D1_DATABASE)
-          .insert(SendLog)
-          .values({
-            id: crypto.randomUUID(),
-            tenantId: this.tenantId,
-            vendorId: vendor.id,
-            vendorName: vendor.name,
-            toEmail: payload.to,
-            subject: payload.subject,
-            status: "sent",
-            createdAt: new Date().toISOString(),
-          })
-          .execute();
-        sendPushNotification(c.env, {
-          title: "Email sent",
-          body: `"${payload.subject}" → ${payload.to} via ${vendor.name}`,
-          tag: "email-sent",
-        }).catch(() => {});
+        c.executionCtx.waitUntil(
+          drizzle(c.env.D1_DATABASE)
+            .insert(SendLog)
+            .values({
+              id: crypto.randomUUID(),
+              tenantId: this.tenantId,
+              vendorId: vendor.id,
+              vendorName: vendor.name,
+              toEmail: payload.to,
+              subject: payload.subject,
+              status: "sent",
+              durationMs,
+              createdAt: new Date().toISOString(),
+            })
+            .execute()
+            .catch(() => {}),
+        );
+        c.executionCtx.waitUntil(
+          sendPushNotification(c.env, {
+            title: "Email sent",
+            body: `"${payload.subject}" → ${payload.to} via ${vendor.name}`,
+            tag: "email-sent",
+          }).catch((e) => {
+            console.error("Push notification failed:", e);
+          }),
+        );
         return;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
+        const durationMs = Date.now() - startTime;
         errors.push(`${vendor.name}: ${message}`);
+
         LogToNewRelic(c, "sendEmail:failover", {
           level: "WARN",
           vendor: vendor.name,
           "context.error": message,
         });
-        await drizzle(c.env.D1_DATABASE)
-          .insert(SendLog)
-          .values({
-            id: crypto.randomUUID(),
-            tenantId: this.tenantId,
-            vendorId: vendor.id,
-            vendorName: vendor.name,
-            toEmail: payload.to,
-            subject: payload.subject,
-            status: "failed",
-            error: redactError(message),
-            createdAt: new Date().toISOString(),
-          })
-          .execute();
-        sendPushNotification(c.env, {
-          title: "Email failed",
-          body: `${vendor.name}: ${message}`,
-          tag: "email-failed",
-        }).catch(() => {});
+
+        await this.recordFailedAttempt(c, vendor, payload, message, durationMs);
+
+        if (isTransientError(error)) {
+          try {
+            await sleep(RETRY_DELAY_MS);
+            await attemptSend();
+            const retryDurationMs = Date.now() - startTime - RETRY_DELAY_MS;
+            LogToNewRelic(c, "sendEmail:retry-success", {
+              vendor: vendor.name,
+              "context.to": payload.to,
+            });
+            c.executionCtx.waitUntil(
+              drizzle(c.env.D1_DATABASE)
+                .insert(SendLog)
+                .values({
+                  id: crypto.randomUUID(),
+                  tenantId: this.tenantId,
+                  vendorId: vendor.id,
+                  vendorName: vendor.name,
+                  toEmail: payload.to,
+                  subject: payload.subject,
+                  status: "sent",
+                  durationMs: retryDurationMs,
+                  createdAt: new Date().toISOString(),
+                })
+                .execute()
+                .catch(() => {}),
+            );
+            c.executionCtx.waitUntil(
+              sendPushNotification(c.env, {
+                title: "Email sent (after retry)",
+                body: `"${payload.subject}" → ${payload.to} via ${vendor.name}`,
+                tag: "email-sent",
+              }).catch((e) => {
+                console.error("Push notification failed:", e);
+              }),
+            );
+            return;
+          } catch (retryError) {
+            const retryMessage =
+              retryError instanceof Error
+                ? retryError.message
+                : String(retryError);
+            errors.push(`${vendor.name}: retry failed (${retryMessage})`);
+            LogToNewRelic(c, "sendEmail:retry-failed", {
+              level: "WARN",
+              vendor: vendor.name,
+              "context.error": retryMessage,
+            });
+          }
+        }
       }
     }
 
     throw new Error(`All email vendors failed: ${errors.join("; ")}`);
   }
+}
+
+function isTransientError(error: unknown): boolean {
+  const msg =
+    error instanceof Error ? error.message.toLowerCase() : String(error);
+  return (
+    msg.includes("timeout") ||
+    msg.includes("econnrefused") ||
+    msg.includes("econnreset") ||
+    msg.includes("etimedout") ||
+    msg.includes("5") ||
+    msg.includes("too many requests") ||
+    msg.includes("rate limit") ||
+    msg.includes("unavailable") ||
+    msg.includes("service unavailable") ||
+    msg.includes("network error") ||
+    msg.includes("dns")
+  );
 }
 
 function parseConfig(raw: string | null): Record<string, unknown> {

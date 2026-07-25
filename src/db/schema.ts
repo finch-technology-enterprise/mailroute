@@ -103,6 +103,13 @@ export const ActivityLog = sqliteTable("activity_logs", {
 
 export type ActivityLogRow = typeof ActivityLog.$inferSelect;
 
+export const LoginAttempt = sqliteTable("login_attempts", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull(),
+  ip: text("ip").notNull().default(""),
+  attemptedAt: text("attempted_at").notNull(),
+});
+
 export const PushSubscription = sqliteTable("push_subscriptions", {
   id: text("id").primaryKey(),
   tenantId: text("tenant_id").notNull(),

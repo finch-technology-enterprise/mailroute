@@ -27,11 +27,8 @@
       }
     }
   ],
-  "vars": {
-    "JWT_SECRET": "dev-jwt-secret-do-not-use-in-prod-abc123xyz"
-  },
   "observability": {
-    "enabled": false,
+    "enabled": true,
     "head_sampling_rate": 1,
     "logs": {
       "enabled": true,

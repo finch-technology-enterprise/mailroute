@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { hasToken, clearToken, hasAuthKey, clearAuthKey } from "../api/client";
+import { checkAuth, hasAuthKey, clearAuthKey, refreshToken } from "../api/client";
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import Icon from "./Icon";
@@ -111,7 +111,7 @@ function NavPills({ collapsed }: { collapsed: boolean }) {
       ))}
       <div style={{ height: 1, background: "var(--border)", margin: "4px 0" }} />
       <motion.button
-        onClick={() => { clearToken(); clearAuthKey(); window.location.href = "/login"; }}
+        onClick={async () => { clearAuthKey(); await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }); window.location.href = "/login"; }}
         whileTap={{ scale: 0.97 }}
         style={{
           width: "100%",
@@ -204,6 +204,7 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem("mailroute-sidebar") === "collapsed");
+  const [authChecked, setAuthChecked] = useState(false);
   const sidebarW = collapsed ? 64 : 240;
 
   useEffect(() => {
@@ -215,15 +216,25 @@ export default function Layout() {
     localStorage.setItem("mailroute-sidebar", collapsed ? "collapsed" : "expanded");
   }, [collapsed]);
 
-  const authenticated = hasToken() || hasAuthKey();
-
   useEffect(() => {
-    if (!authenticated) {
-      navigate("/login", { replace: true });
-    }
-  }, [authenticated, navigate]);
+    let cancelled = false;
+    (async () => {
+      const ok = hasAuthKey() || await checkAuth();
+      if (cancelled) return;
+      if (!ok) {
+        const refreshed = await refreshToken();
+        if (cancelled) return;
+        if (!refreshed) {
+          navigate("/login", { replace: true });
+          return;
+        }
+      }
+      setAuthChecked(true);
+    })();
+    return () => { cancelled = true; };
+  }, [navigate]);
 
-  if (!authenticated) return null;
+  if (!authChecked) return null;
 
   return (
     <div
@@ -287,7 +298,7 @@ export default function Layout() {
         <div style={{ position: "relative" }}>
           <motion.button
             className="mobile-signout"
-            onClick={() => { clearToken(); clearAuthKey(); window.location.href = "/login"; }}
+            onClick={async () => { clearAuthKey(); await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }); window.location.href = "/login"; }}
             whileTap={{ scale: 0.93 }}
             aria-label="Sign out"
             style={{

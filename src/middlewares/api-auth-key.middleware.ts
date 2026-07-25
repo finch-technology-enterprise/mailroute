@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/d1";
 import { and, eq, isNull } from "drizzle-orm";
 import { ApiResponse } from "../utils/response.util";
 import { ApiKey } from "../db/schema";
-import { hashApiKey } from "../lib/password";
+import { hashApiKey, hashApiKeyLegacy } from "../lib/password";
 import type { AppEnv } from "../lib/app-env";
 
 export const ApiAuthKeyMiddleware = async (
@@ -19,14 +19,24 @@ export const ApiAuthKeyMiddleware = async (
     );
   }
 
-  const keyHash = await hashApiKey(providedKey);
+  const hmacSecret = c.env.CONFIG_ENCRYPTION_KEY;
+  const keyHash = await hashApiKey(providedKey, hmacSecret);
 
   const db = drizzle(c.env.D1_DATABASE);
-  const record = await db
+  let record = await db
     .select({ id: ApiKey.id, tenantId: ApiKey.tenantId })
     .from(ApiKey)
     .where(and(eq(ApiKey.keyHash, keyHash), isNull(ApiKey.revokedAt)))
     .get();
+
+  if (!record && hmacSecret) {
+    const legacyHash = await hashApiKeyLegacy(providedKey);
+    record = await db
+      .select({ id: ApiKey.id, tenantId: ApiKey.tenantId })
+      .from(ApiKey)
+      .where(and(eq(ApiKey.keyHash, legacyHash), isNull(ApiKey.revokedAt)))
+      .get();
+  }
 
   if (!record) {
     return c.json(ApiResponse(false, "Unauthorized: Invalid API key"), 401);

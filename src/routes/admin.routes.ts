@@ -79,7 +79,7 @@ admin.post("/vendors", zValidator("json", vendorSchema), async (c) => {
     .insert(EmailVendor)
     .values({ id, tenantId, ...data })
     .execute();
-  EmailVendorService.invalidateCache();
+  EmailVendorService.invalidateCache(tenantId);
   const row = await db
     .select()
     .from(EmailVendor)
@@ -101,7 +101,7 @@ admin.put("/vendors/:id", zValidator("json", vendorUpdateSchema), async (c) => {
     .set(data)
     .where(and(eq(EmailVendor.id, id), eq(EmailVendor.tenantId, tenantId)))
     .execute();
-  EmailVendorService.invalidateCache();
+  EmailVendorService.invalidateCache(tenantId);
   const row = await db
     .select()
     .from(EmailVendor)
@@ -123,7 +123,7 @@ admin.delete("/vendors/:id", async (c) => {
     .get();
   if (!existing) return c.json(ApiResponse(false, "Vendor not found"), 404);
   await db.delete(EmailVendor).where(and(eq(EmailVendor.id, id), eq(EmailVendor.tenantId, tenantId))).execute();
-  EmailVendorService.invalidateCache();
+  EmailVendorService.invalidateCache(tenantId);
   await logActivity(c.env, "vendor_deleted", `Vendor "${id}" deleted`, undefined, tenantId);
   return c.json(ApiResponse(true, "Vendor deleted"));
 });
@@ -303,7 +303,7 @@ admin.post("/api-keys", zValidator("json", createApiKeySchema), async (c) => {
   const { name } = c.req.valid("json");
 
   const rawKey = generateApiKey();
-  const keyHash = await hashApiKey(rawKey);
+  const keyHash = await hashApiKey(rawKey, c.env.CONFIG_ENCRYPTION_KEY);
   const keyPrefix = rawKey.slice(0, 10) + "...";
 
   await db.insert(ApiKey).values({
