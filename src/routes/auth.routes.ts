@@ -3,7 +3,7 @@ import { setCookie, getCookie } from "hono/cookie";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { drizzle } from "drizzle-orm/d1";
-import { eq, and, gt, count as drizzleCount } from "drizzle-orm";
+import { eq, and, gt, lt, count as drizzleCount } from "drizzle-orm";
 import { Tenant, User, ApiKey, LoginAttempt } from "../db/schema";
 import { signJWT, verifyJWT } from "../lib/jwt";
 import { generateResetToken, verifyResetToken } from "../lib/reset-token";
@@ -16,25 +16,21 @@ import type { AppEnv } from "../lib/app-env";
 const JWT_EXPIRY_SEC = 86400;
 const REFRESH_EXPIRY_SEC = 604800;
 
-function isLocalDev(c: Context<AppEnv>): boolean {
-  const url = new URL(c.req.url);
-  return url.hostname === "localhost" || url.hostname === "127.0.0.1";
-}
 
 function setAuthCookies(c: Context<AppEnv>, token: string, refreshToken: string): void {
   const opts = {
     httpOnly: true,
-    secure: !isLocalDev(c),
+    secure: true,
     sameSite: "Strict" as const,
     path: "/api",
   };
-  setCookie(c, "auth_token", token, { ...opts, maxAge: JWT_EXPIRY_SEC });
-  setCookie(c, "refresh_token", refreshToken, { ...opts, maxAge: REFRESH_EXPIRY_SEC });
+  setCookie(c, "__Secure-auth_token", token, { ...opts, maxAge: JWT_EXPIRY_SEC });
+  setCookie(c, "__Secure-refresh_token", refreshToken, { ...opts, maxAge: REFRESH_EXPIRY_SEC });
 }
 
 function clearAuthCookies(c: Context<AppEnv>): void {
-  setCookie(c, "auth_token", "", { httpOnly: true, path: "/api", maxAge: 0 });
-  setCookie(c, "refresh_token", "", { httpOnly: true, path: "/api", maxAge: 0 });
+  setCookie(c, "__Secure-auth_token", "", { httpOnly: true, secure: true, sameSite: "Strict", path: "/api", maxAge: 0 });
+  setCookie(c, "__Secure-refresh_token", "", { httpOnly: true, secure: true, sameSite: "Strict", path: "/api", maxAge: 0 });
 }
 
 const auth = new Hono<AppEnv>();
@@ -47,7 +43,7 @@ const signupSchema = z.object({
   tenantSlug: z.string().min(3).max(64).regex(/^[a-z0-9-]+$/),
 });
 
-auth.post("/signup", zValidator("json", signupSchema), async (c) => {
+auth.post("/signup", RateLimitMiddleware, zValidator("json", signupSchema), async (c) => {
   const db = drizzle(c.env.D1_DATABASE);
   const { name, email, password, tenantName, tenantSlug } = c.req.valid("json");
 
@@ -120,6 +116,7 @@ const loginSchema = z.object({
 
 const LOGIN_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_MAX_ATTEMPTS = 5;
+const LOCKOUT_CLEANUP_WINDOW_MS = 3600000; // 1 hour — purge stale login attempts older than this
 
 async function checkLoginRateLimit(db: ReturnType<typeof drizzle>, email: string): Promise<boolean> {
   const cutoff = new Date(Date.now() - LOGIN_RATE_LIMIT_WINDOW_MS).toISOString();
@@ -167,7 +164,12 @@ auth.post("/login", zValidator("json", loginSchema), async (c) => {
   }
 
   c.executionCtx.waitUntil(
-    db.delete(LoginAttempt).where(eq(LoginAttempt.email, email)).execute().catch(() => {}),
+    db.delete(LoginAttempt)
+      .where(and(
+        eq(LoginAttempt.email, email),
+        lt(LoginAttempt.attemptedAt, new Date(Date.now() - LOCKOUT_CLEANUP_WINDOW_MS).toISOString())
+      ))
+      .execute().catch(() => {}),
   );
 
   const tenant = await db.select().from(Tenant).where(eq(Tenant.id, user.tenantId)).get();
@@ -284,7 +286,7 @@ auth.post("/change-password", requireAuth, RateLimitMiddleware, zValidator("json
 });
 
 auth.post("/refresh", async (c) => {
-  const refreshToken = getCookie(c, "refresh_token");
+  const refreshToken = getCookie(c, "__Secure-refresh_token");
   if (!refreshToken) {
     return c.json(ApiResponse(false, "No refresh token"), 401);
   }
@@ -335,7 +337,7 @@ export async function requireAuth(
   if (authHeader?.startsWith("Bearer ")) {
     token = authHeader.slice(7);
   } else {
-    token = getCookie(c, "auth_token");
+    token = getCookie(c, "__Secure-auth_token");
   }
 
   if (!token) {
