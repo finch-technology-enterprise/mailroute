@@ -11,7 +11,7 @@ interface PushPayload {
 }
 
 export async function sendPushNotification(
-  env: { D1_DATABASE: D1Database; VAPID_PUBLIC_KEY?: string; VAPID_PRIVATE_KEY?: string },
+  env: { D1_DATABASE: D1Database; VAPID_PUBLIC_KEY?: string; VAPID_PRIVATE_KEY?: string; VAPID_CONTACT_EMAIL?: string },
   payload: PushPayload,
 ) {
   try {
@@ -35,7 +35,7 @@ export async function sendPushNotification(
           const payload = {
             aud: new URL(sub.endpoint).origin,
             exp: now + 86400,
-            sub: "mailto:admin@mailroute.dev",
+            sub: env.VAPID_CONTACT_EMAIL || "mailto:admin@mailroute.dev",
           };
 
           function toBase64url(buf: Uint8Array): string {

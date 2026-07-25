@@ -169,7 +169,7 @@ export const spec = {
   },
   components: {
     securitySchemes: {
-      ApiKeyAuth: { type: "apiKey", in: "header", name: "x-api-key", description: "API key authentication" },
+      ApiKeyAuth: { type: "apiKey", in: "header", name: "X-API-AUTH-KEY", description: "API key authentication" },
       BearerAuth: { type: "http", scheme: "bearer", bearerFormat: "JWT", description: "JWT token authentication" },
     },
   },

@@ -38,6 +38,7 @@ export function createCachedLoader<T>(
     },
     invalidate(): void {
       cache = null;
+      loading = null;
     },
   };
 }

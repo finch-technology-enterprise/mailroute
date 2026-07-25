@@ -234,14 +234,27 @@ general.post(
     const tenantId = c.get("tenantId");
     const emailService = new EmailService(c.env, tenantId);
 
+    const CHUNK_SIZE = 10;
     const allSendIds: string[] = [];
     let hasScheduled = false;
-    for (const email of emails) {
-      const sendId = crypto.randomUUID();
-      allSendIds.push(sendId);
-      const { sendAt, ...payload } = email;
-      if (sendAt) hasScheduled = true;
-      await scheduleOrSend(c, emailService, payload, sendId, sendAt);
+    for (let i = 0; i < emails.length; i += CHUNK_SIZE) {
+      const chunk = emails.slice(i, i + CHUNK_SIZE);
+      const ids = chunk.map(() => crypto.randomUUID());
+      allSendIds.push(...ids);
+      for (const email of chunk) {
+        if (email.sendAt) hasScheduled = true;
+      }
+      await Promise.allSettled(chunk.map((email, j) => {
+        const { sendAt: _, ...payload } = email;
+        const sendInBg = (c: any, svc: any, p: any, sid: string) => {
+          c.executionCtx.waitUntil(
+            svc.sendEmail(c, p).catch((err: any) => {
+              LogToNewRelic(c, "sendEmail failed", { "context.send_id": sid, "context.error": String(err) });
+            })
+          );
+        };
+        sendInBg(c, emailService, payload, ids[j]);
+      }));
     }
 
     return c.json(ApiResponse(true, hasScheduled ? "Emails scheduled" : "Emails are being sent", { sendIds: allSendIds }), 200);

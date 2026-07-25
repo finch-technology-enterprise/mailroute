@@ -1,11 +1,12 @@
 import { Hono } from "hono";
 import { drizzle } from "drizzle-orm/d1";
-import { eq } from "drizzle-orm";
+import { and, eq, asc } from "drizzle-orm";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { CloudflareBindings } from "../lib/cloudflare.binding";
 import { ApiResponse } from "../utils/response.util";
-import { SendLog } from "../db/schema";
+import { SendLog, EmailVendor } from "../db/schema";
+import { EmailService } from "../services/email.service";
 
 async function verifyWebhookSignature(body: string, signature: string, secret: string): Promise<boolean> {
   if (!secret || !signature) return false;
@@ -77,6 +78,34 @@ webhook.post("/:vendor", zValidator("json", statusUpdateSchema), async (c) => {
         .execute();
     }
   });
+
+  if (status === "bounced" || status === "failed") {
+    c.executionCtx.waitUntil(
+      (async () => {
+        try {
+          const db2 = drizzle(c.env.D1_DATABASE);
+          const tenantVendors = await db2.select().from(EmailVendor)
+            .where(and(eq(EmailVendor.tenantId, log.tenantId), eq(EmailVendor.enabled, true)))
+            .orderBy(asc(EmailVendor.priority))
+            .all();
+          const failedVendor = tenantVendors.find(v => v.id === log.vendorId);
+          const nextVendor = failedVendor
+            ? tenantVendors.filter(v => v.priority > failedVendor.priority)[0]
+            : tenantVendors[0];
+          if (nextVendor) {
+            const emailService = new EmailService(c.env, log.tenantId);
+            await emailService.sendEmail(c, {
+              to: log.toEmail,
+              subject: log.subject,
+              content: "Retry: " + (log.error || ""),
+            }, nextVendor.name);
+          }
+        } catch (err) {
+          console.error("Webhook retry failed:", err);
+        }
+      })(),
+    );
+  }
 
   return c.json(ApiResponse(true, "Status updated"));
 });
