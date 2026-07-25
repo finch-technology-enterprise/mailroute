@@ -15,6 +15,7 @@ import adminRoutes from "./routes/admin.routes";
 import authRoutes from "./routes/auth.routes";
 import webhookRoutes from "./routes/webhook.routes";
 import trackingRoutes from "./routes/tracking.routes";
+import { scheduled } from "./scheduled";
 
 const MAX_BODY_SIZE_KB = 50;
 const MAX_BODY_SIZE = 1024 * MAX_BODY_SIZE_KB;
@@ -146,4 +147,5 @@ export default {
     }
     return app.fetch(request, env, ctx);
   },
+  scheduled,
 };

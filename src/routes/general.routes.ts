@@ -1,12 +1,14 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
+import { drizzle } from "drizzle-orm/d1";
 import { ApiResponse } from "../utils/response.util";
 import { EmailTemplateService } from "../services/email-template.service";
 import { EmailService, EmailPayload } from "../services/email.service";
 import { ApiAuthKeyMiddleware } from "../middlewares/api-auth-key.middleware";
 import { RateLimitMiddleware } from "../middlewares/rate-limit.middleware";
 import { LogToNewRelic } from "../utils/helpers.util";
+import { ScheduledEmail } from "../db/schema";
 import type { AppEnv } from "../lib/app-env";
 
 const general = new Hono<AppEnv>();
@@ -38,6 +40,29 @@ const sendInBackground = (
       });
     }),
   );
+};
+
+const scheduleOrSend = async (
+  c: Parameters<EmailService["sendEmail"]>[0],
+  emailService: EmailService,
+  payload: EmailPayload,
+  sendId: string,
+  sendAt?: string,
+) => {
+  if (sendAt) {
+    const db = drizzle(c.env.D1_DATABASE);
+    await db.insert(ScheduledEmail).values({
+      id: sendId,
+      tenantId: c.get("tenantId"),
+      payload: JSON.stringify(payload),
+      sendAt,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }).execute();
+  } else {
+    sendInBackground(c, emailService, payload, sendId);
+  }
 };
 
 // --- Shared, hardened field definitions -------------------------------------
@@ -80,6 +105,7 @@ const sendEmailSchema = z.object({
   bcc: emailField.optional(),
   attachments: z.array(attachmentSchema).max(10).optional(),
   track: z.coerce.boolean().optional().default(false),
+  sendAt: z.string().datetime().optional(),
 });
 
 const sendBatchSchema = z.object({
@@ -93,6 +119,7 @@ const sendBatchSchema = z.object({
         bcc: emailField.optional(),
         attachments: z.array(attachmentSchema).max(10).optional(),
         track: z.coerce.boolean().optional().default(false),
+        sendAt: z.string().datetime().optional(),
       }),
     )
     .min(1)
@@ -113,6 +140,7 @@ const sendTemplateSchema = z.object({
   subject: subjectField.optional(),
   attachments: z.array(attachmentSchema).max(10).optional(),
   track: z.coerce.boolean().optional().default(false),
+  sendAt: z.string().datetime().optional(),
   // Placeholder map. Keys are constrained to a safe charset so they can never
   // inject regex/markup into substitution; values are coerced to strings and
   // bounded; the map size is capped to prevent abuse.
@@ -182,14 +210,16 @@ general.post(
   ApiAuthKeyMiddleware,
   jsonBody(sendEmailSchema),
   async (c) => {
-    const { to, subject, content, cc, bcc, track } = c.req.valid("json");
+    const { to, subject, content, cc, bcc, track, sendAt } = c.req.valid("json");
 
     const tenantId = c.get("tenantId");
     const emailService = new EmailService(c.env, tenantId);
     const sendId = crypto.randomUUID();
-    sendInBackground(c, emailService, { to, subject, content, cc, bcc, track }, sendId);
+    await scheduleOrSend(c, emailService, { to, subject, content, cc, bcc, track }, sendId, sendAt);
 
-    return c.json(ApiResponse(true, "Email is being sent", { sendId }), 200);
+    return c.json(sendAt
+      ? ApiResponse(true, "Email scheduled", { sendId, sendAt })
+      : ApiResponse(true, "Email is being sent", { sendId }), 200);
   },
 );
 
@@ -204,21 +234,17 @@ general.post(
     const tenantId = c.get("tenantId");
     const emailService = new EmailService(c.env, tenantId);
 
-    const CONCURRENT_SENDS = 10;
-    const chunks: EmailPayload[][] = [];
-    for (let i = 0; i < emails.length; i += CONCURRENT_SENDS) {
-      chunks.push(emails.slice(i, i + CONCURRENT_SENDS));
-    }
     const allSendIds: string[] = [];
-    for (const chunk of chunks) {
-      const sendIds = chunk.map(() => crypto.randomUUID());
-      allSendIds.push(...sendIds);
-      chunk.forEach((email, i) => {
-        sendInBackground(c, emailService, email, sendIds[i]);
-      });
+    let hasScheduled = false;
+    for (const email of emails) {
+      const sendId = crypto.randomUUID();
+      allSendIds.push(sendId);
+      const { sendAt, ...payload } = email;
+      if (sendAt) hasScheduled = true;
+      await scheduleOrSend(c, emailService, payload, sendId, sendAt);
     }
 
-    return c.json(ApiResponse(true, "Emails are being sent", { sendIds: allSendIds }), 200);
+    return c.json(ApiResponse(true, hasScheduled ? "Emails scheduled" : "Emails are being sent", { sendIds: allSendIds }), 200);
   },
 );
 
@@ -228,7 +254,7 @@ general.post(
   ApiAuthKeyMiddleware,
   jsonBody(sendTemplateSchema),
   async (c) => {
-    const { to, template, subject, replacements, attachments, track } = c.req.valid("json");
+    const { to, template, subject, replacements, attachments, track, sendAt } = c.req.valid("json");
 
     const tenantId = c.get("tenantId");
     const emailTemplateService = new EmailTemplateService(c.env, tenantId);
@@ -243,15 +269,17 @@ general.post(
 
     const emailService = new EmailService(c.env, tenantId);
     const sendId = crypto.randomUUID();
-    sendInBackground(c, emailService, {
+    await scheduleOrSend(c, emailService, {
       to,
       subject: subject ?? emailData.subject,
       content: emailData.content,
       attachments,
       track,
-    }, sendId);
+    }, sendId, sendAt);
 
-    return c.json(ApiResponse(true, "Email is being sent", { sendId }), 200);
+    return c.json(sendAt
+      ? ApiResponse(true, "Email scheduled", { sendId, sendAt })
+      : ApiResponse(true, "Email is being sent", { sendId }), 200);
   },
 );
 

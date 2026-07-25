@@ -28,6 +28,20 @@ const statusUpdateSchema = z.object({
   timestamp: z.string().optional(),
 });
 
+const WEBHOOK_DB_RETRIES = 3;
+const WEBHOOK_RETRY_DELAY_MS = 200;
+
+async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (attempt >= WEBHOOK_DB_RETRIES) throw err;
+      await new Promise((r) => setTimeout(r, WEBHOOK_RETRY_DELAY_MS * attempt));
+    }
+  }
+}
+
 webhook.post("/:vendor", zValidator("json", statusUpdateSchema), async (c) => {
   const rawBody = await c.req.raw.clone().text();
   const signature = c.req.header("X-Webhook-Signature");
@@ -39,25 +53,30 @@ webhook.post("/:vendor", zValidator("json", statusUpdateSchema), async (c) => {
   const { messageId, status, error } = c.req.valid("json");
 
   const db = drizzle(c.env.D1_DATABASE);
-  const log = await db.select().from(SendLog).where(eq(SendLog.id, messageId)).get();
+
+  const log = await withRetry(() =>
+    db.select().from(SendLog).where(eq(SendLog.id, messageId)).get(),
+  );
 
   if (!log) {
     return c.json(ApiResponse(false, "Unknown message"), 404);
   }
 
-  if (status === "bounced" || status === "complained" || status === "failed") {
-    await db
-      .update(SendLog)
-      .set({ status: "failed", error: error || `${vendor} reported: ${status}` })
-      .where(eq(SendLog.id, messageId))
-      .execute();
-  } else if (status === "delivered") {
-    await db
-      .update(SendLog)
-      .set({ status: "delivered" })
-      .where(eq(SendLog.id, messageId))
-      .execute();
-  }
+  await withRetry(async () => {
+    if (status === "bounced" || status === "complained" || status === "failed") {
+      await db
+        .update(SendLog)
+        .set({ status: "failed", error: error || `${vendor} reported: ${status}` })
+        .where(eq(SendLog.id, messageId))
+        .execute();
+    } else if (status === "delivered") {
+      await db
+        .update(SendLog)
+        .set({ status: "delivered" })
+        .where(eq(SendLog.id, messageId))
+        .execute();
+    }
+  });
 
   return c.json(ApiResponse(true, "Status updated"));
 });

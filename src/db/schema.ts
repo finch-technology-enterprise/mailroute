@@ -57,6 +57,7 @@ export const EmailTemplate = sqliteTable("email_templates", {
   slug: text("slug").notNull().unique(),
   subject: text("subject").notNull(),
   content: text("content").notNull(),
+  version: integer("version").notNull().default(1),
   createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
   updatedAt: text("updated_at").$defaultFn(() => new Date().toISOString()),
 });

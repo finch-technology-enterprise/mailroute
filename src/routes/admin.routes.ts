@@ -40,6 +40,50 @@ async function logActivity(c: CloudflareBindings, type: string, summary: string,
 admin.use("*", requireAuth);
 admin.use("*", RateLimitMiddleware);
 
+// --- Vendor Health ---
+
+admin.get("/vendor-health", async (c) => {
+  const db = drizzle(c.env.D1_DATABASE);
+  const tenantId = c.get("tenantId");
+  const vendors = await db
+    .select()
+    .from(EmailVendor)
+    .where(eq(EmailVendor.tenantId, tenantId))
+    .orderBy(asc(EmailVendor.priority))
+    .all();
+  const health = await Promise.all(
+    vendors.map(async (v) => {
+      const [total, failed] = await Promise.all([
+        db
+          .select({ count: count() })
+          .from(SendLog)
+          .where(and(eq(SendLog.vendorId, v.id), eq(SendLog.tenantId, tenantId)))
+          .get(),
+        db
+          .select({ count: count() })
+          .from(SendLog)
+          .where(
+            and(
+              eq(SendLog.vendorId, v.id),
+              eq(SendLog.tenantId, tenantId),
+              eq(SendLog.status, "failed"),
+            ),
+          )
+          .get(),
+      ]);
+      return {
+        id: v.id,
+        name: v.name,
+        enabled: v.enabled,
+        priority: v.priority,
+        totalSends: total?.count ?? 0,
+        failedSends: failed?.count ?? 0,
+      };
+    }),
+  );
+  return c.json(ApiResponse(true, null, health));
+});
+
 // --- Vendors ---
 
 admin.get("/vendors", async (c) => {
@@ -191,7 +235,7 @@ admin.post("/templates", zValidator("json", templateSchema), async (c) => {
   const id = data.slug;
   await db
     .insert(EmailTemplate)
-    .values({ id, tenantId, ...data })
+    .values({ id, tenantId, ...data, version: 1 })
     .execute();
   EmailTemplateService.invalidateCache(tenantId);
   const row = await db
@@ -211,9 +255,17 @@ admin.put(
     const tenantId = c.get("tenantId");
     const id = c.req.param("id");
     const data = c.req.valid("json");
+
+    const existing = await db
+      .select()
+      .from(EmailTemplate)
+      .where(and(eq(EmailTemplate.id, id), eq(EmailTemplate.tenantId, tenantId)))
+      .get();
+    if (!existing) return c.json(ApiResponse(false, "Template not found"), 404);
+
     await db
       .update(EmailTemplate)
-      .set(data)
+      .set({ ...data, version: (existing.version ?? 1) + 1 })
       .where(and(eq(EmailTemplate.id, id), eq(EmailTemplate.tenantId, tenantId)))
       .execute();
     EmailTemplateService.invalidateCache(tenantId);
@@ -223,7 +275,7 @@ admin.put(
       .where(and(eq(EmailTemplate.id, id), eq(EmailTemplate.tenantId, tenantId)))
       .get();
     if (!row) return c.json(ApiResponse(false, "Template not found"), 404);
-    await logActivity(c.env, "template_updated", `Template "${id}" updated`, undefined, tenantId);
+    await logActivity(c.env, "template_updated", `Template "${id}" updated to v${row.version}`, undefined, tenantId);
     return c.json(ApiResponse(true, "Template updated", row));
   },
 );
@@ -368,6 +420,48 @@ admin.get("/logs", async (c) => {
     }
   }
   return c.json(ApiResponse(true, null, mapped));
+});
+
+// --- Log Export ---
+
+admin.get("/logs/export", async (c) => {
+  const db = drizzle(c.env.D1_DATABASE);
+  const tenantId = c.get("tenantId");
+  const format = c.req.query("format") || "csv";
+  const rows = await db
+    .select()
+    .from(SendLog)
+    .where(eq(SendLog.tenantId, tenantId))
+    .orderBy(desc(SendLog.createdAt))
+    .all();
+
+  if (format === "json") {
+    return new Response(JSON.stringify(rows), {
+      headers: {
+        "Content-Type": "application/json",
+        "Content-Disposition": 'attachment; filename="send-logs.json"',
+      },
+    });
+  }
+
+  const cols: Array<keyof typeof SendLog._.columns> = [
+    "id", "tenantId", "vendorId", "vendorName", "toEmail",
+    "subject", "status", "error", "durationMs", "createdAt",
+  ];
+  const escape = (v: unknown): string => {
+    const s = v == null ? "" : String(v);
+    return s.includes(",") || s.includes('"') || s.includes("\n")
+      ? `"${s.replace(/"/g, '""')}"`
+      : s;
+  };
+  const csv = [cols.join(","), ...rows.map((r) => cols.map((c) => escape((r as any)[c])).join(","))].join("\n");
+
+  return new Response(csv, {
+    headers: {
+      "Content-Type": "text/csv",
+      "Content-Disposition": 'attachment; filename="send-logs.csv"',
+    },
+  });
 });
 
 // --- API Keys ---
