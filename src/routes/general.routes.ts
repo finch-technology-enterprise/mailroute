@@ -29,7 +29,7 @@ const sendInBackground = (
   sendId: string,
 ) => {
   c.executionCtx.waitUntil(
-    emailService.sendEmail(c, payload).catch((error: unknown) => {
+    emailService.sendEmail(c, payload, undefined, sendId).catch((error: unknown) => {
       LogToNewRelic(c, "sendEmail failed", {
         level: "ERROR",
         "context.send_id": sendId,
@@ -79,6 +79,7 @@ const sendEmailSchema = z.object({
   cc: emailField.optional(),
   bcc: emailField.optional(),
   attachments: z.array(attachmentSchema).max(10).optional(),
+  track: z.coerce.boolean().optional().default(false),
 });
 
 const sendBatchSchema = z.object({
@@ -91,6 +92,7 @@ const sendBatchSchema = z.object({
         cc: emailField.optional(),
         bcc: emailField.optional(),
         attachments: z.array(attachmentSchema).max(10).optional(),
+        track: z.coerce.boolean().optional().default(false),
       }),
     )
     .min(1)
@@ -110,6 +112,7 @@ const sendTemplateSchema = z.object({
   // substituted) subject is used.
   subject: subjectField.optional(),
   attachments: z.array(attachmentSchema).max(10).optional(),
+  track: z.coerce.boolean().optional().default(false),
   // Placeholder map. Keys are constrained to a safe charset so they can never
   // inject regex/markup into substitution; values are coerced to strings and
   // bounded; the map size is capped to prevent abuse.
@@ -179,12 +182,12 @@ general.post(
   ApiAuthKeyMiddleware,
   jsonBody(sendEmailSchema),
   async (c) => {
-    const { to, subject, content, cc, bcc } = c.req.valid("json");
+    const { to, subject, content, cc, bcc, track } = c.req.valid("json");
 
     const tenantId = c.get("tenantId");
     const emailService = new EmailService(c.env, tenantId);
     const sendId = crypto.randomUUID();
-    sendInBackground(c, emailService, { to, subject, content, cc, bcc }, sendId);
+    sendInBackground(c, emailService, { to, subject, content, cc, bcc, track }, sendId);
 
     return c.json(ApiResponse(true, "Email is being sent", { sendId }), 200);
   },
@@ -225,7 +228,7 @@ general.post(
   ApiAuthKeyMiddleware,
   jsonBody(sendTemplateSchema),
   async (c) => {
-    const { to, template, subject, replacements, attachments } = c.req.valid("json");
+    const { to, template, subject, replacements, attachments, track } = c.req.valid("json");
 
     const tenantId = c.get("tenantId");
     const emailTemplateService = new EmailTemplateService(c.env, tenantId);
@@ -245,6 +248,7 @@ general.post(
       subject: subject ?? emailData.subject,
       content: emailData.content,
       attachments,
+      track,
     }, sendId);
 
     return c.json(ApiResponse(true, "Email is being sent", { sendId }), 200);

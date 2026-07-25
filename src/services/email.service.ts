@@ -25,6 +25,7 @@ export interface EmailPayload {
   cc?: string;
   bcc?: string;
   attachments?: Array<{ filename: string; content: string; contentType?: string }>;
+  track?: boolean;
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
@@ -107,12 +108,32 @@ export class EmailService {
     );
   }
 
+  private applyTracking(content: string, sendId: string, baseUrl: string): string {
+    const pixelUrl = `${baseUrl}/api/track/open/${sendId}`;
+    const clickBaseUrl = `${baseUrl}/api/track/click/${sendId}`;
+
+    const withLinks = content.replace(
+      /href="(https?:\/\/[^"]+)"/gi,
+      (_, url) => `href="${clickBaseUrl}?url=${encodeURIComponent(url)}"`,
+    );
+
+    return `${withLinks}<img src="${pixelUrl}" width="1" height="1" alt="" style="display:none" />`;
+  }
+
   async sendEmail(
     c: Context<any, any, any>,
     payload: EmailPayload,
     vendorName?: string,
+    sendId?: string,
   ) {
     LogToNewRelic(c, "sendEmail", payload);
+
+    if (payload.track && sendId) {
+      const appUrl = this.env.APP_URL;
+      if (appUrl) {
+        payload.content = this.applyTracking(payload.content, sendId, appUrl.replace(/\/+$/, ""));
+      }
+    }
 
     let vendors = await this.vendorService.getActiveVendors();
     if (vendorName) {

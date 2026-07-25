@@ -14,6 +14,7 @@ import generalRoutes from "./routes/general.routes";
 import adminRoutes from "./routes/admin.routes";
 import authRoutes from "./routes/auth.routes";
 import webhookRoutes from "./routes/webhook.routes";
+import trackingRoutes from "./routes/tracking.routes";
 
 const MAX_BODY_SIZE_KB = 50;
 const MAX_BODY_SIZE = 1024 * MAX_BODY_SIZE_KB;
@@ -56,6 +57,7 @@ api.route("/", generalRoutes);
 api.route("/auth", authRoutes);
 api.route("/admin", adminRoutes);
 api.route("/webhooks", webhookRoutes);
+api.route("/track", trackingRoutes);
 
 // API v1 — same handlers, versioned prefix for clients that want stability
 const apiV1 = new Hono<{ Bindings: CloudflareBindings }>().basePath("/api/v1");
@@ -63,6 +65,7 @@ apiV1.route("/", generalRoutes);
 apiV1.route("/auth", authRoutes);
 apiV1.route("/admin", adminRoutes);
 apiV1.route("/webhooks", webhookRoutes);
+apiV1.route("/track", trackingRoutes);
 
 // Main app — mounts the API, API v1, and serves the SPA at /admin/*
 const app = new Hono<{ Bindings: CloudflareBindings }>();
