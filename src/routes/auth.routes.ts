@@ -327,6 +327,16 @@ auth.get("/verify-email", async (c) => {
   return c.json(ApiResponse(true, "Email verified successfully"));
 });
 
+export function requireRole(...roles: string[]) {
+  return async (c: Context<AppEnv>, next: Next) => {
+    const userRole = c.get("userRole");
+    if (!roles.includes(userRole)) {
+      return c.json(ApiResponse(false, "Insufficient permissions"), 403);
+    }
+    await next();
+  };
+}
+
 export async function requireAuth(
   c: Context<AppEnv>,
   next: Next,
