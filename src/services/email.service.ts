@@ -24,6 +24,7 @@ export interface EmailPayload {
   content: string;
   cc?: string;
   bcc?: string;
+  attachments?: Array<{ filename: string; content: string; contentType?: string }>;
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
@@ -151,6 +152,7 @@ export class EmailService {
             html: payload.content,
             cc: payload.cc,
             bcc: payload.bcc,
+            attachments: payload.attachments,
             config: parseConfig(vendor.config),
           }),
           VENDOR_TIMEOUT_MS,

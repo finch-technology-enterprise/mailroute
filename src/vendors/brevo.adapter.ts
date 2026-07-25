@@ -2,7 +2,22 @@ import { EmailVendorAdapter, SendArgs } from "./types";
 
 export const brevoAdapter: EmailVendorAdapter = {
   name: "brevo",
-  async send({ endpoint, token, from, to, subject, html }: SendArgs) {
+  async send({ endpoint, token, from, to, subject, html, attachments }: SendArgs) {
+    const body: Record<string, unknown> = {
+      sender: { email: from.email, ...(from.name ? { name: from.name } : {}) },
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+    };
+
+    if (attachments && attachments.length > 0) {
+      body.attachment = attachments.map((a) => ({
+        name: a.filename,
+        content: a.content,
+        contentType: a.contentType || "application/octet-stream",
+      }));
+    }
+
     const response = await fetch(endpoint, {
       method: "POST",
       headers: {
@@ -10,12 +25,7 @@ export const brevoAdapter: EmailVendorAdapter = {
         "content-type": "application/json",
         "api-key": token,
       },
-      body: JSON.stringify({
-        sender: { email: from.email, ...(from.name ? { name: from.name } : {}) },
-        to: [{ email: to }],
-        subject,
-        htmlContent: html,
-      }),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {

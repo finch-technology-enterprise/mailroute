@@ -60,6 +60,12 @@ const subjectField = z
 // HTML body: bounded to the body limit; sent verbatim as HTML by design.
 const contentField = z.string().min(1).max(50_000);
 
+const attachmentSchema = z.object({
+  filename: z.string().min(1).max(256),
+  content: z.string().min(1),
+  contentType: z.string().max(128).optional(),
+});
+
 const sendOtpSchema = z.object({
   to: emailField,
   // OTP codes are short and alphanumeric — reject anything else outright.
@@ -72,6 +78,7 @@ const sendEmailSchema = z.object({
   content: contentField,
   cc: emailField.optional(),
   bcc: emailField.optional(),
+  attachments: z.array(attachmentSchema).max(10).optional(),
 });
 
 const sendBatchSchema = z.object({
@@ -83,6 +90,7 @@ const sendBatchSchema = z.object({
         content: contentField,
         cc: emailField.optional(),
         bcc: emailField.optional(),
+        attachments: z.array(attachmentSchema).max(10).optional(),
       }),
     )
     .min(1)
@@ -101,6 +109,7 @@ const sendTemplateSchema = z.object({
   // Optional subject override. When omitted, the template's own (placeholder-
   // substituted) subject is used.
   subject: subjectField.optional(),
+  attachments: z.array(attachmentSchema).max(10).optional(),
   // Placeholder map. Keys are constrained to a safe charset so they can never
   // inject regex/markup into substitution; values are coerced to strings and
   // bounded; the map size is capped to prevent abuse.
@@ -216,7 +225,7 @@ general.post(
   ApiAuthKeyMiddleware,
   jsonBody(sendTemplateSchema),
   async (c) => {
-    const { to, template, subject, replacements } = c.req.valid("json");
+    const { to, template, subject, replacements, attachments } = c.req.valid("json");
 
     const tenantId = c.get("tenantId");
     const emailTemplateService = new EmailTemplateService(c.env, tenantId);
@@ -235,6 +244,7 @@ general.post(
       to,
       subject: subject ?? emailData.subject,
       content: emailData.content,
+      attachments,
     }, sendId);
 
     return c.json(ApiResponse(true, "Email is being sent", { sendId }), 200);
