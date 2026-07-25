@@ -57,3 +57,30 @@ describe("createCachedLoader", () => {
     await expect(loader.get()).rejects.toThrow("load failed");
   });
 });
+
+describe("stale-while-revalidate", () => {
+  it("serves stale data while re-fetching in background", async () => {
+    vi.useRealTimers();
+    let callCount = 0;
+    const loader = createCachedLoader(async () => {
+      await new Promise((r) => setTimeout(r, 10));
+      callCount++;
+      return `value-${callCount}`;
+    }, 30, 100);
+
+    const v1 = await loader.get();
+    expect(v1).toBe("value-1");
+    expect(callCount).toBe(1);
+
+    await new Promise((r) => setTimeout(r, 40));
+
+    const v2 = await loader.get();
+    expect(v2).toBe("value-1");
+
+    await new Promise((r) => setTimeout(r, 20));
+
+    const v3 = await loader.get();
+    expect(v3).toBe("value-2");
+    expect(callCount).toBe(2);
+  });
+});
