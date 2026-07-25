@@ -15,6 +15,7 @@ import adminRoutes from "./routes/admin.routes";
 import authRoutes from "./routes/auth.routes";
 import webhookRoutes from "./routes/webhook.routes";
 import trackingRoutes from "./routes/tracking.routes";
+import { spec, swaggerUiHtml } from "./openapi";
 import { scheduled } from "./scheduled";
 
 const MAX_BODY_SIZE_KB = 50;
@@ -60,6 +61,9 @@ api.route("/admin", adminRoutes);
 api.route("/webhooks", webhookRoutes);
 api.route("/track", trackingRoutes);
 
+api.get("/openapi.json", (c) => c.json(spec));
+api.get("/docs", (c) => c.html(swaggerUiHtml()));
+
 // API v1 — same handlers, versioned prefix for clients that want stability
 const apiV1 = new Hono<{ Bindings: CloudflareBindings }>().basePath("/api/v1");
 apiV1.route("/", generalRoutes);
@@ -68,34 +72,53 @@ apiV1.route("/admin", adminRoutes);
 apiV1.route("/webhooks", webhookRoutes);
 apiV1.route("/track", trackingRoutes);
 
+apiV1.get("/openapi.json", (c) => c.json(spec));
+apiV1.get("/docs", (c) => c.html(swaggerUiHtml()));
+
 // Main app — mounts the API, API v1, and serves the SPA at /admin/*
 const app = new Hono<{ Bindings: CloudflareBindings }>();
 app.route("/", api);
 app.route("/", apiV1);
 
-const ADMIN_CSP = [
-  "default-src 'self'",
-  "script-src 'self'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: https:",
-  "connect-src 'self'",
-  "font-src 'self'",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "frame-ancestors 'none'",
-  "upgrade-insecure-requests",
-].join("; ");
+function generateNonce(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return btoa(String.fromCharCode(...bytes));
+}
 
-function withSecurityHeaders(res: Response): Response {
+function cspWithNonce(nonce: string): string {
+  return [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}'`,
+    `style-src 'self' 'nonce-${nonce}'`,
+    "img-src 'self' data: https:",
+    "connect-src 'self'",
+    "font-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "upgrade-insecure-requests",
+  ].join("; ");
+}
+
+async function withSecurityHeaders(res: Response, nonce: string): Promise<Response> {
   const headers = new Headers(res.headers);
-  if (!headers.has("Content-Security-Policy")) {
-    headers.set("Content-Security-Policy", ADMIN_CSP);
-  }
+  headers.set("Content-Security-Policy", cspWithNonce(nonce));
   headers.set("X-Content-Type-Options", "nosniff");
   headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
-  return new Response(res.body, {
+  let body = res.body;
+  const ct = res.headers.get("content-type") || "";
+  if (ct.includes("text/html")) {
+    const text = res.body ? await res.clone().text() : "";
+    body = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(text.replace(/__CSP_NONCE__/g, nonce)));
+        controller.close();
+      },
+    });
+  }
+  return new Response(body, {
     status: res.status,
     statusText: res.statusText,
     headers,
@@ -103,16 +126,17 @@ function withSecurityHeaders(res: Response): Response {
 }
 
 app.get("/admin*", async (c) => {
+  const nonce = generateNonce();
   const url = new URL(c.req.url);
   let path = url.pathname.replace("/admin", "") || "/";
   path = path === "/" ? "/index.html" : path;
   const reqUrl = new URL(path, "http://assets");
   const res = await c.env.ADMIN_ASSETS.fetch(reqUrl);
-  if (res.status === 200) return withSecurityHeaders(res);
+  if (res.status === 200) return withSecurityHeaders(res, nonce);
   const fallback = await c.env.ADMIN_ASSETS.fetch(
     new URL("/index.html", "http://assets"),
   );
-  if (fallback.status === 200) return withSecurityHeaders(fallback);
+  if (fallback.status === 200) return withSecurityHeaders(fallback, nonce);
   return c.text("Not found", 404);
 });
 
