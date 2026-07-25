@@ -43,3 +43,5 @@ lerna-debug.log*
 
 # Playwright / browser testing artifacts
 .playwright-mcp/
+test-results/
+playwright-report/

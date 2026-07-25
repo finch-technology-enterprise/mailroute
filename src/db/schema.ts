@@ -57,6 +57,7 @@ export const EmailTemplate = sqliteTable("email_templates", {
   slug: text("slug").notNull().unique(),
   subject: text("subject").notNull(),
   content: text("content").notNull(),
+  version: integer("version").notNull().default(1),
   createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
   updatedAt: text("updated_at").$defaultFn(() => new Date().toISOString()),
 });
@@ -110,6 +111,27 @@ export const LoginAttempt = sqliteTable("login_attempts", {
   email: text("email").notNull(),
   ip: text("ip").notNull().default(""),
   attemptedAt: text("attempted_at").notNull(),
+});
+
+export const ScheduledEmail = sqliteTable("scheduled_emails", {
+  id: text("id").primaryKey(),
+  tenantId: text("tenant_id").notNull(),
+  payload: text("payload").notNull(),
+  sendAt: text("send_at").notNull(),
+  status: text("status").notNull().default("pending"),
+  error: text("error"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const TrackingEvent = sqliteTable("tracking_events", {
+  id: text("id").primaryKey(),
+  sendId: text("send_id").notNull(),
+  type: text("type").notNull(),
+  url: text("url"),
+  userAgent: text("user_agent"),
+  ip: text("ip"),
+  createdAt: text("created_at").notNull(),
 });
 
 export const PushSubscription = sqliteTable("push_subscriptions", {

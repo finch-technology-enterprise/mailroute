@@ -1,12 +1,14 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
+import { drizzle } from "drizzle-orm/d1";
 import { ApiResponse } from "../utils/response.util";
 import { EmailTemplateService } from "../services/email-template.service";
 import { EmailService, EmailPayload } from "../services/email.service";
 import { ApiAuthKeyMiddleware } from "../middlewares/api-auth-key.middleware";
 import { RateLimitMiddleware } from "../middlewares/rate-limit.middleware";
 import { LogToNewRelic } from "../utils/helpers.util";
+import { ScheduledEmail } from "../db/schema";
 import type { AppEnv } from "../lib/app-env";
 
 const general = new Hono<AppEnv>();
@@ -29,7 +31,7 @@ const sendInBackground = (
   sendId: string,
 ) => {
   c.executionCtx.waitUntil(
-    emailService.sendEmail(c, payload).catch((error: unknown) => {
+    emailService.sendEmail(c, payload, undefined, sendId).catch((error: unknown) => {
       LogToNewRelic(c, "sendEmail failed", {
         level: "ERROR",
         "context.send_id": sendId,
@@ -38,6 +40,29 @@ const sendInBackground = (
       });
     }),
   );
+};
+
+const scheduleOrSend = async (
+  c: Parameters<EmailService["sendEmail"]>[0],
+  emailService: EmailService,
+  payload: EmailPayload,
+  sendId: string,
+  sendAt?: string,
+) => {
+  if (sendAt) {
+    const db = drizzle(c.env.D1_DATABASE);
+    await db.insert(ScheduledEmail).values({
+      id: sendId,
+      tenantId: c.get("tenantId"),
+      payload: JSON.stringify(payload),
+      sendAt,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }).execute();
+  } else {
+    sendInBackground(c, emailService, payload, sendId);
+  }
 };
 
 // --- Shared, hardened field definitions -------------------------------------
@@ -60,6 +85,12 @@ const subjectField = z
 // HTML body: bounded to the body limit; sent verbatim as HTML by design.
 const contentField = z.string().min(1).max(50_000);
 
+const attachmentSchema = z.object({
+  filename: z.string().min(1).max(256),
+  content: z.string().min(1),
+  contentType: z.string().max(128).optional(),
+});
+
 const sendOtpSchema = z.object({
   to: emailField,
   // OTP codes are short and alphanumeric — reject anything else outright.
@@ -72,6 +103,9 @@ const sendEmailSchema = z.object({
   content: contentField,
   cc: emailField.optional(),
   bcc: emailField.optional(),
+  attachments: z.array(attachmentSchema).max(10).optional(),
+  track: z.coerce.boolean().optional().default(false),
+  sendAt: z.string().datetime().optional(),
 });
 
 const sendBatchSchema = z.object({
@@ -83,6 +117,9 @@ const sendBatchSchema = z.object({
         content: contentField,
         cc: emailField.optional(),
         bcc: emailField.optional(),
+        attachments: z.array(attachmentSchema).max(10).optional(),
+        track: z.coerce.boolean().optional().default(false),
+        sendAt: z.string().datetime().optional(),
       }),
     )
     .min(1)
@@ -101,6 +138,9 @@ const sendTemplateSchema = z.object({
   // Optional subject override. When omitted, the template's own (placeholder-
   // substituted) subject is used.
   subject: subjectField.optional(),
+  attachments: z.array(attachmentSchema).max(10).optional(),
+  track: z.coerce.boolean().optional().default(false),
+  sendAt: z.string().datetime().optional(),
   // Placeholder map. Keys are constrained to a safe charset so they can never
   // inject regex/markup into substitution; values are coerced to strings and
   // bounded; the map size is capped to prevent abuse.
@@ -170,14 +210,16 @@ general.post(
   ApiAuthKeyMiddleware,
   jsonBody(sendEmailSchema),
   async (c) => {
-    const { to, subject, content, cc, bcc } = c.req.valid("json");
+    const { to, subject, content, cc, bcc, track, sendAt } = c.req.valid("json");
 
     const tenantId = c.get("tenantId");
     const emailService = new EmailService(c.env, tenantId);
     const sendId = crypto.randomUUID();
-    sendInBackground(c, emailService, { to, subject, content, cc, bcc }, sendId);
+    await scheduleOrSend(c, emailService, { to, subject, content, cc, bcc, track }, sendId, sendAt);
 
-    return c.json(ApiResponse(true, "Email is being sent", { sendId }), 200);
+    return c.json(sendAt
+      ? ApiResponse(true, "Email scheduled", { sendId, sendAt })
+      : ApiResponse(true, "Email is being sent", { sendId }), 200);
   },
 );
 
@@ -191,15 +233,21 @@ general.post(
 
     const tenantId = c.get("tenantId");
     const emailService = new EmailService(c.env, tenantId);
-    const sendIds: string[] = [];
 
-    for (const email of emails) {
-      const sendId = crypto.randomUUID();
-      sendIds.push(sendId);
-      sendInBackground(c, emailService, email, sendId);
+    const CHUNK_SIZE = 10;
+    const allSendIds: string[] = [];
+    let hasScheduled = false;
+    for (let i = 0; i < emails.length; i += CHUNK_SIZE) {
+      const chunk = emails.slice(i, i + CHUNK_SIZE);
+      const ids = chunk.map(() => crypto.randomUUID());
+      allSendIds.push(...ids);
+      await Promise.allSettled(chunk.map((email, j) => {
+        if (email.sendAt) hasScheduled = true;
+        return scheduleOrSend(c, emailService, email, ids[j], email.sendAt);
+      }));
     }
 
-    return c.json(ApiResponse(true, "Emails are being sent", { sendIds }), 200);
+    return c.json(ApiResponse(true, hasScheduled ? "Emails scheduled" : "Emails are being sent", { sendIds: allSendIds }), 200);
   },
 );
 
@@ -209,7 +257,7 @@ general.post(
   ApiAuthKeyMiddleware,
   jsonBody(sendTemplateSchema),
   async (c) => {
-    const { to, template, subject, replacements } = c.req.valid("json");
+    const { to, template, subject, replacements, attachments, track, sendAt } = c.req.valid("json");
 
     const tenantId = c.get("tenantId");
     const emailTemplateService = new EmailTemplateService(c.env, tenantId);
@@ -224,13 +272,17 @@ general.post(
 
     const emailService = new EmailService(c.env, tenantId);
     const sendId = crypto.randomUUID();
-    sendInBackground(c, emailService, {
+    await scheduleOrSend(c, emailService, {
       to,
       subject: subject ?? emailData.subject,
       content: emailData.content,
-    }, sendId);
+      attachments,
+      track,
+    }, sendId, sendAt);
 
-    return c.json(ApiResponse(true, "Email is being sent", { sendId }), 200);
+    return c.json(sendAt
+      ? ApiResponse(true, "Email scheduled", { sendId, sendAt })
+      : ApiResponse(true, "Email is being sent", { sendId }), 200);
   },
 );
 

@@ -8,6 +8,7 @@ export interface SendArgs {
   html: string;
   cc?: string;
   bcc?: string;
+  attachments?: Array<{ filename: string; content: string; contentType?: string }>;
   /** Parsed from the vendor row's JSON `config` column; {} when null. */
   config: Record<string, unknown>;
 }

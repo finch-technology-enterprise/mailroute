@@ -1,6 +1,6 @@
 import { Context } from "hono";
 import { drizzle } from "drizzle-orm/d1";
-import { and, eq, gt, count } from "drizzle-orm";
+import { and, eq, gt } from "drizzle-orm";
 import { CloudflareBindings } from "../lib/cloudflare.binding";
 import { LogToNewRelic } from "../utils/helpers.util";
 import { EmailVendorService } from "./email-vendor.service";
@@ -24,6 +24,8 @@ export interface EmailPayload {
   content: string;
   cc?: string;
   bcc?: string;
+  attachments?: Array<{ filename: string; content: string; contentType?: string }>;
+  track?: boolean;
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
@@ -54,67 +56,84 @@ export class EmailService {
     this.tenantId = tenantId;
   }
 
-  private async isVendorInCooldown(vendorId: string): Promise<boolean> {
+  private async getVendorsInCooldown(vendorIds: string[]): Promise<Set<string>> {
     const cutoff = new Date(Date.now() - CIRCUIT_BREAKER_WINDOW_MS).toISOString();
     const db = drizzle(this.env.D1_DATABASE);
-    const recent = await db
-      .select({ total: count() })
+    const failed = await db
+      .select({ vendorId: SendLog.vendorId })
       .from(SendLog)
       .where(
         and(
-          eq(SendLog.vendorId, vendorId),
           eq(SendLog.status, "failed"),
           gt(SendLog.createdAt, cutoff),
           eq(SendLog.tenantId, this.tenantId),
         ),
       )
-      .get();
-    return (recent?.total ?? 0) >= CIRCUIT_BREAKER_THRESHOLD;
+      .all();
+    const counts = new Map<string, number>();
+    for (const row of failed) {
+      counts.set(row.vendorId, (counts.get(row.vendorId) || 0) + 1);
+    }
+    return new Set(vendorIds.filter((id) => (counts.get(id) || 0) >= CIRCUIT_BREAKER_THRESHOLD));
   }
 
-  private async recordFailedAttempt(
+  private async recordSendLog(
     c: Context<any, any, any>,
     vendor: { id: string; name: string },
     payload: EmailPayload,
-    message: string,
+    status: "sent" | "failed",
     durationMs: number,
+    error?: string,
   ) {
-    const redacted = redactError(message);
+    const db = drizzle(c.env.D1_DATABASE);
     c.executionCtx.waitUntil(
-      drizzle(c.env.D1_DATABASE)
-        .insert(SendLog)
-        .values({
-          id: crypto.randomUUID(),
-          tenantId: this.tenantId,
-          vendorId: vendor.id,
-          vendorName: vendor.name,
-          toEmail: payload.to,
-          subject: payload.subject,
-          status: "failed",
-          error: redacted,
-          durationMs,
-          createdAt: new Date().toISOString(),
-        })
-        .execute()
-        .catch(() => {}),
+      db.insert(SendLog).values({
+        id: crypto.randomUUID(),
+        tenantId: this.tenantId,
+        vendorId: vendor.id,
+        vendorName: vendor.name,
+        toEmail: payload.to,
+        subject: payload.subject,
+        status,
+        error: error ? redactError(error) : null,
+        durationMs,
+        createdAt: new Date().toISOString(),
+      }).execute().catch(() => {}),
     );
+    const pushPayload = status === "sent"
+      ? { title: "Email sent", body: `"${payload.subject}" → ${payload.to} via ${vendor.name}`, tag: "email-sent" }
+      : { title: "Email failed", body: `${vendor.name}: ${(error || "").slice(0, 200)}`, tag: "email-failed" };
     c.executionCtx.waitUntil(
-      sendPushNotification(c.env, {
-        title: "Email failed",
-        body: `${vendor.name}: ${message.slice(0, 200)}`,
-        tag: "email-failed",
-      }).catch((e) => {
-        console.error("Push notification failed:", e);
-      }),
+      sendPushNotification(c.env, pushPayload).catch((e) => { console.error("Push notification failed:", e); }),
     );
+  }
+
+  private applyTracking(content: string, sendId: string, baseUrl: string): string {
+    const pixelUrl = `${baseUrl}/api/track/open/${sendId}`;
+    const clickBaseUrl = `${baseUrl}/api/track/click/${sendId}`;
+
+    const withLinks = content.replace(
+      /href="(https?:\/\/[^"]+)"/gi,
+      (_, url) => `href="${clickBaseUrl}?url=${encodeURIComponent(url)}"`,
+    );
+
+    return `${withLinks}<img src="${pixelUrl}" width="1" height="1" alt="" style="display:none" />`;
   }
 
   async sendEmail(
     c: Context<any, any, any>,
     payload: EmailPayload,
     vendorName?: string,
+    sendId?: string,
   ) {
     LogToNewRelic(c, "sendEmail", payload);
+
+    if (payload.track && sendId) {
+      const appUrl = this.env.APP_URL;
+      if (appUrl) {
+        payload.content = this.applyTracking(payload.content, sendId, appUrl.replace(/\/+$/, ""));
+      }
+    }
 
     let vendors = await this.vendorService.getActiveVendors();
     if (vendorName) {
@@ -124,6 +143,7 @@ export class EmailService {
       throw new Error("No email vendors configured");
     }
 
+    const inCooldownIds = await this.getVendorsInCooldown(vendors.map((v) => v.id));
     const errors: string[] = [];
     for (const vendor of vendors) {
       const adapter = ADAPTERS[vendor.name];
@@ -132,7 +152,7 @@ export class EmailService {
         continue;
       }
 
-      const inCooldown = await this.isVendorInCooldown(vendor.id);
+      const inCooldown = inCooldownIds.has(vendor.id);
       if (inCooldown) {
         errors.push(`${vendor.name}: skipped (circuit breaker)`);
         LogToNewRelic(c, "sendEmail:circuit-breaker", {
@@ -153,6 +173,7 @@ export class EmailService {
             html: payload.content,
             cc: payload.cc,
             bcc: payload.bcc,
+            attachments: payload.attachments,
             config: parseConfig(vendor.config),
           }),
           VENDOR_TIMEOUT_MS,
@@ -168,32 +189,7 @@ export class EmailService {
           vendor: vendor.name,
           "context.to": payload.to,
         });
-        c.executionCtx.waitUntil(
-          drizzle(c.env.D1_DATABASE)
-            .insert(SendLog)
-            .values({
-              id: crypto.randomUUID(),
-              tenantId: this.tenantId,
-              vendorId: vendor.id,
-              vendorName: vendor.name,
-              toEmail: payload.to,
-              subject: payload.subject,
-              status: "sent",
-              durationMs,
-              createdAt: new Date().toISOString(),
-            })
-            .execute()
-            .catch(() => {}),
-        );
-        c.executionCtx.waitUntil(
-          sendPushNotification(c.env, {
-            title: "Email sent",
-            body: `"${payload.subject}" → ${payload.to} via ${vendor.name}`,
-            tag: "email-sent",
-          }).catch((e) => {
-            console.error("Push notification failed:", e);
-          }),
-        );
+        await this.recordSendLog(c, vendor, payload, "sent", durationMs);
         return;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -206,7 +202,7 @@ export class EmailService {
           "context.error": message,
         });
 
-        await this.recordFailedAttempt(c, vendor, payload, message, durationMs);
+        await this.recordSendLog(c, vendor, payload, "failed", durationMs, message);
 
         if (isTransientError(error)) {
           let retrySuccess = false;
@@ -221,32 +217,7 @@ export class EmailService {
                 "context.to": payload.to,
                 "context.retry": retry,
               });
-              c.executionCtx.waitUntil(
-                drizzle(c.env.D1_DATABASE)
-                  .insert(SendLog)
-                  .values({
-                    id: crypto.randomUUID(),
-                    tenantId: this.tenantId,
-                    vendorId: vendor.id,
-                    vendorName: vendor.name,
-                    toEmail: payload.to,
-                    subject: payload.subject,
-                    status: "sent",
-                    durationMs: retryDurationMs,
-                    createdAt: new Date().toISOString(),
-                  })
-                  .execute()
-                  .catch(() => {}),
-              );
-              c.executionCtx.waitUntil(
-                sendPushNotification(c.env, {
-                  title: "Email sent (after retry)",
-                  body: `"${payload.subject}" → ${payload.to} via ${vendor.name}`,
-                  tag: "email-sent",
-                }).catch((e) => {
-                  console.error("Push notification failed:", e);
-                }),
-              );
+              await this.recordSendLog(c, vendor, payload, "sent", retryDurationMs);
               retrySuccess = true;
               break;
             } catch (retryError) {
@@ -280,7 +251,7 @@ function isTransientError(error: unknown): boolean {
     msg.includes("econnrefused") ||
     msg.includes("econnreset") ||
     msg.includes("etimedout") ||
-    msg.includes("5") ||
+    /\b5\d{2}\b/.test(msg) ||  // only match HTTP 5xx status codes
     msg.includes("too many requests") ||
     msg.includes("rate limit") ||
     msg.includes("unavailable") ||

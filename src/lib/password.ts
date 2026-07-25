@@ -43,7 +43,24 @@ export async function verifyPassword(
   const [iters, saltB64, hashB64] = parts;
   const salt = fromBase64url(saltB64);
   const { hash } = await pbkdf2(password, salt, parseInt(iters, 10));
-  return toBase64url(hash) === hashB64;
+  const expected = fromBase64url(hashB64);
+  if (hash.length !== expected.length) return false;
+  const key = await crypto.subtle.importKey(
+    "raw", hash, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+  );
+  const expectedKey = await crypto.subtle.importKey(
+    "raw", expected, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+  );
+  const [sig1, sig2] = await Promise.all([
+    crypto.subtle.sign("HMAC", key, new Uint8Array(1)),
+    crypto.subtle.sign("HMAC", expectedKey, new Uint8Array(1)),
+  ]);
+  const a = new Uint8Array(sig1);
+  const b = new Uint8Array(sig2);
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) result |= a[i] ^ b[i];
+  return result === 0;
 }
 
 export function generateApiKey(): string {

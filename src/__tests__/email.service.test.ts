@@ -9,7 +9,7 @@ describe("EmailService utilities", () => {
       msg.includes("econnrefused") ||
       msg.includes("econnreset") ||
       msg.includes("etimedout") ||
-      msg.includes("5") ||
+      /\b5\d{2}\b/.test(msg) ||  // only match HTTP 5xx status codes
       msg.includes("too many requests") ||
       msg.includes("rate limit") ||
       msg.includes("unavailable") ||
@@ -109,6 +109,13 @@ describe("EmailService utilities", () => {
 
     it("detects DNS errors", () => {
       expect(isTransientError(new Error("DNS resolution failed"))).toBe(true);
+    });
+
+    it("does not match 400 or other 4xx as transient", () => {
+      expect(isTransientError(new Error("400 Bad Request"))).toBe(false);
+      expect(isTransientError(new Error("402 Payment Required"))).toBe(false);
+      expect(isTransientError(new Error("404 Not Found"))).toBe(false);
+      expect(isTransientError("5")).toBe(false); // plain "5" no longer matches
     });
 
     it("returns false for non-transient errors", () => {

@@ -21,6 +21,32 @@ jobs:
       - run: npm test
       - run: npm run format -- --check
 
+  playwright:
+    runs-on: ubuntu-latest
+    needs: [check]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - run: npx playwright install chromium
+      - run: npm run build:admin
+      - name: Run Playwright tests
+        run: npx playwright test --config e2e/playwright.config.ts
+        env:
+          JWT_SECRET: test-jwt-secret-for-playwright
+          CONFIG_ENCRYPTION_KEY: test-encryption-key-for-playwright
+          RESET_TOKEN_SECRET: test-reset-secret-for-playwright
+          WEBHOOK_SECRET: test-webhook-secret-for-playwright
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
   deploy-staging:
     if: github.event_name == 'pull_request'
     needs: [check]

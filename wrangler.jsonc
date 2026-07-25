@@ -5,6 +5,9 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-06-10",
   "workers_dev": true,
+  "triggers": {
+    "crons": ["*/1 * * * *"]
+  },
   "assets": {
     "directory": "admin/dist",
     "binding": "ADMIN_ASSETS"
