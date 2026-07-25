@@ -241,19 +241,9 @@ general.post(
       const chunk = emails.slice(i, i + CHUNK_SIZE);
       const ids = chunk.map(() => crypto.randomUUID());
       allSendIds.push(...ids);
-      for (const email of chunk) {
-        if (email.sendAt) hasScheduled = true;
-      }
       await Promise.allSettled(chunk.map((email, j) => {
-        const { sendAt: _, ...payload } = email;
-        const sendInBg = (c: any, svc: any, p: any, sid: string) => {
-          c.executionCtx.waitUntil(
-            svc.sendEmail(c, p).catch((err: any) => {
-              LogToNewRelic(c, "sendEmail failed", { "context.send_id": sid, "context.error": String(err) });
-            })
-          );
-        };
-        sendInBg(c, emailService, payload, ids[j]);
+        if (email.sendAt) hasScheduled = true;
+        return scheduleOrSend(c, emailService, email, ids[j], email.sendAt);
       }));
     }
 
