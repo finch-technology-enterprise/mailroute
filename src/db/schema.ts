@@ -112,6 +112,27 @@ export const LoginAttempt = sqliteTable("login_attempts", {
   attemptedAt: text("attempted_at").notNull(),
 });
 
+export const ScheduledEmail = sqliteTable("scheduled_emails", {
+  id: text("id").primaryKey(),
+  tenantId: text("tenant_id").notNull(),
+  payload: text("payload").notNull(),
+  sendAt: text("send_at").notNull(),
+  status: text("status").notNull().default("pending"),
+  error: text("error"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const TrackingEvent = sqliteTable("tracking_events", {
+  id: text("id").primaryKey(),
+  sendId: text("send_id").notNull(),
+  type: text("type").notNull(),
+  url: text("url"),
+  userAgent: text("user_agent"),
+  ip: text("ip"),
+  createdAt: text("created_at").notNull(),
+});
+
 export const PushSubscription = sqliteTable("push_subscriptions", {
   id: text("id").primaryKey(),
   tenantId: text("tenant_id").notNull(),
