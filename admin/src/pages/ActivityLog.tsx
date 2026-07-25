@@ -49,19 +49,35 @@ function getBadge(type: string, status: string | null) {
   };
 }
 
+const TYPE_OPTIONS = [
+  { value: "", label: "All types" },
+  { value: "email_sent", label: "Email sent" },
+  { value: "email_failed", label: "Email failed" },
+  { value: "vendor_created", label: "Vendor created" },
+  { value: "vendor_updated", label: "Vendor updated" },
+  { value: "vendor_deleted", label: "Vendor deleted" },
+  { value: "template_created", label: "Template created" },
+  { value: "template_updated", label: "Template updated" },
+  { value: "template_deleted", label: "Template deleted" },
+  { value: "api_key_created", label: "API key created" },
+  { value: "api_key_revoked", label: "API key revoked" },
+];
+
 export default function ActivityLog() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
 
   useEffect(() => {
-    get<ApiResponse<LogEntry[]>>("/logs")
+    get<ApiResponse<LogEntry[]>>("/logs?limit=200")
       .then((res) => setLogs(res.data || []))
       .catch(() => setLogs([]))
       .finally(() => setLoading(false));
   }, []);
 
   const filtered = logs.filter((log) => {
+    if (typeFilter && !log.type.startsWith(typeFilter)) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return (
@@ -80,9 +96,29 @@ export default function ActivityLog() {
       </div>
 
       {!loading && logs.length > 0 && (
-        <div className="mb-5">
+        <div className="mb-5" style={{ display: "flex", gap: 8 }}>
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            style={{
+              flexShrink: 0,
+              background: "var(--bg-secondary)",
+              border: "1px solid var(--border)",
+              borderRadius: 10,
+              padding: "8px 12px",
+              fontSize: 13,
+              color: "var(--text-primary)",
+              outline: "none",
+              cursor: "pointer",
+            }}
+          >
+            {TYPE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
           <div
             style={{
+              flex: 1,
               display: "flex",
               alignItems: "center",
               gap: 8,
@@ -127,8 +163,8 @@ export default function ActivityLog() {
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState
-          title={search ? "No matching activity" : "No activity yet"}
-          description={search ? "Try a different search term." : "Activity from the app will appear here."}
+          title={search || typeFilter ? "No matching activity" : "No activity yet"}
+          description={search || typeFilter ? "Try a different filter." : "Activity from the app will appear here."}
         />
       ) : (
         <div className="card overflow-hidden">

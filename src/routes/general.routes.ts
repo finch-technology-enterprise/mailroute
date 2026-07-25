@@ -70,6 +70,23 @@ const sendEmailSchema = z.object({
   to: emailField,
   subject: subjectField,
   content: contentField,
+  cc: emailField.optional(),
+  bcc: emailField.optional(),
+});
+
+const sendBatchSchema = z.object({
+  emails: z
+    .array(
+      z.object({
+        to: emailField,
+        subject: subjectField,
+        content: contentField,
+        cc: emailField.optional(),
+        bcc: emailField.optional(),
+      }),
+    )
+    .min(1)
+    .max(50),
 });
 
 const sendTemplateSchema = z.object({
@@ -111,6 +128,7 @@ general.get("/health", async (c) => {
     status: dbOk ? "healthy" : "degraded",
     database: dbOk ? "connected" : "unreachable",
     version: "1.0.0",
+    environment: c.env.APP_ENVIRONMENT || "unknown",
     timestamp: new Date().toISOString(),
   }, dbOk ? 200 : 503);
 });
@@ -152,14 +170,36 @@ general.post(
   ApiAuthKeyMiddleware,
   jsonBody(sendEmailSchema),
   async (c) => {
-    const { to, subject, content } = c.req.valid("json");
+    const { to, subject, content, cc, bcc } = c.req.valid("json");
 
     const tenantId = c.get("tenantId");
     const emailService = new EmailService(c.env, tenantId);
     const sendId = crypto.randomUUID();
-    sendInBackground(c, emailService, { to, subject, content }, sendId);
+    sendInBackground(c, emailService, { to, subject, content, cc, bcc }, sendId);
 
     return c.json(ApiResponse(true, "Email is being sent", { sendId }), 200);
+  },
+);
+
+general.post(
+  "/send-batch",
+  RateLimitMiddleware,
+  ApiAuthKeyMiddleware,
+  jsonBody(sendBatchSchema),
+  async (c) => {
+    const { emails } = c.req.valid("json");
+
+    const tenantId = c.get("tenantId");
+    const emailService = new EmailService(c.env, tenantId);
+    const sendIds: string[] = [];
+
+    for (const email of emails) {
+      const sendId = crypto.randomUUID();
+      sendIds.push(sendId);
+      sendInBackground(c, emailService, email, sendId);
+    }
+
+    return c.json(ApiResponse(true, "Emails are being sent", { sendIds }), 200);
   },
 );
 

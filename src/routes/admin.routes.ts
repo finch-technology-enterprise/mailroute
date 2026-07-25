@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { drizzle } from "drizzle-orm/d1";
-import { and, eq, asc, desc } from "drizzle-orm";
+import { and, eq, asc, desc, count, gt } from "drizzle-orm";
 import { CloudflareBindings } from "../lib/cloudflare.binding";
 import { ApiResponse } from "../utils/response.util";
 import { requireAuth } from "./auth.routes";
@@ -17,6 +17,7 @@ import {
 } from "../db/schema";
 import { EmailService } from "../services/email.service";
 import { EmailVendorService } from "../services/email-vendor.service";
+import { EmailTemplateService } from "../services/email-template.service";
 import { generateApiKey, hashApiKey } from "../lib/password";
 import type { AppEnv } from "../lib/app-env";
 
@@ -43,11 +44,13 @@ admin.use("*", RateLimitMiddleware);
 admin.get("/vendors", async (c) => {
   const db = drizzle(c.env.D1_DATABASE);
   const tenantId = c.get("tenantId");
+  const limit = Math.min(Math.max(parseInt(c.req.query("limit") || "100", 10), 1), 200);
   const rows = await db
     .select()
     .from(EmailVendor)
     .where(eq(EmailVendor.tenantId, tenantId))
     .orderBy(asc(EmailVendor.priority))
+    .limit(limit)
     .all();
   return c.json(ApiResponse(true, null, rows));
 });
@@ -133,8 +136,38 @@ admin.delete("/vendors/:id", async (c) => {
 admin.get("/templates", async (c) => {
   const db = drizzle(c.env.D1_DATABASE);
   const tenantId = c.get("tenantId");
-  const rows = await db.select().from(EmailTemplate).where(eq(EmailTemplate.tenantId, tenantId)).all();
+  const limit = Math.min(Math.max(parseInt(c.req.query("limit") || "100", 10), 1), 200);
+  const rows = await db.select().from(EmailTemplate).where(eq(EmailTemplate.tenantId, tenantId)).limit(limit).all();
   return c.json(ApiResponse(true, null, rows));
+});
+
+const previewSchema = z.object({
+  replacements: z.record(z.string(), z.coerce.string()).default({}),
+});
+
+admin.post("/templates/:id/preview", zValidator("json", previewSchema), async (c) => {
+  const db = drizzle(c.env.D1_DATABASE);
+  const tenantId = c.get("tenantId");
+  const id = c.req.param("id");
+  const { replacements } = c.req.valid("json");
+
+  const template = await db
+    .select()
+    .from(EmailTemplate)
+    .where(and(eq(EmailTemplate.id, id), eq(EmailTemplate.tenantId, tenantId)))
+    .get();
+
+  if (!template) return c.json(ApiResponse(false, "Template not found"), 404);
+
+  let subject = template.subject;
+  let content = template.content;
+  Object.entries(replacements).forEach(([key, value]) => {
+    const token = `{{${key}}}`;
+    subject = subject.split(token).join(value);
+    content = content.split(token).join(value);
+  });
+
+  return c.json(ApiResponse(true, null, { subject, content }));
 });
 
 const templateSchema = z.object({
@@ -158,6 +191,7 @@ admin.post("/templates", zValidator("json", templateSchema), async (c) => {
     .insert(EmailTemplate)
     .values({ id, tenantId, ...data })
     .execute();
+  EmailTemplateService.invalidateCache(tenantId);
   const row = await db
     .select()
     .from(EmailTemplate)
@@ -180,6 +214,7 @@ admin.put(
       .set(data)
       .where(and(eq(EmailTemplate.id, id), eq(EmailTemplate.tenantId, tenantId)))
       .execute();
+    EmailTemplateService.invalidateCache(tenantId);
     const row = await db
       .select()
       .from(EmailTemplate)
@@ -202,6 +237,7 @@ admin.delete("/templates/:id", async (c) => {
     .get();
   if (!existing) return c.json(ApiResponse(false, "Template not found"), 404);
   await db.delete(EmailTemplate).where(and(eq(EmailTemplate.id, id), eq(EmailTemplate.tenantId, tenantId))).execute();
+  EmailTemplateService.invalidateCache(tenantId);
   await logActivity(c.env, "template_deleted", `Template "${id}" deleted`, undefined, tenantId);
   return c.json(ApiResponse(true, "Template deleted"));
 });
@@ -211,12 +247,28 @@ admin.delete("/templates/:id", async (c) => {
 admin.get("/stats", async (c) => {
   const db = drizzle(c.env.D1_DATABASE);
   const tenantId = c.get("tenantId");
-  const vendors = await db.select().from(EmailVendor).where(eq(EmailVendor.tenantId, tenantId)).all();
-  const templates = await db.select().from(EmailTemplate).where(eq(EmailTemplate.tenantId, tenantId)).all();
+  const [vendors, templates, sendCount] = await Promise.all([
+    db.select().from(EmailVendor).where(eq(EmailVendor.tenantId, tenantId)).all(),
+    db.select().from(EmailTemplate).where(eq(EmailTemplate.tenantId, tenantId)).all(),
+    db.select({ total: count() }).from(SendLog).where(eq(SendLog.tenantId, tenantId)).get(),
+  ]);
+  const recentFailed = await db
+    .select({ total: count() })
+    .from(SendLog)
+    .where(
+      and(
+        eq(SendLog.tenantId, tenantId),
+        eq(SendLog.status, "failed"),
+        gt(SendLog.createdAt, new Date(Date.now() - 86400000).toISOString()),
+      ),
+    )
+    .get();
   return c.json(
     ApiResponse(true, null, {
       vendorCount: vendors.length,
       templateCount: templates.length,
+      totalSends: sendCount?.total ?? 0,
+      failedLast24h: recentFailed?.total ?? 0,
     }),
   );
 });
@@ -247,28 +299,71 @@ admin.post("/test-send", zValidator("json", testSendSchema), async (c) => {
 admin.get("/logs", async (c) => {
   const db = drizzle(c.env.D1_DATABASE);
   const tenantId = c.get("tenantId");
+  const limit = Math.min(Math.max(parseInt(c.req.query("limit") || "50", 10), 1), 200);
   const [sends, activities] = await Promise.all([
-    db.select().from(SendLog).where(eq(SendLog.tenantId, tenantId)).orderBy(desc(SendLog.createdAt)).limit(100).all(),
-    db.select().from(ActivityLog).where(eq(ActivityLog.tenantId, tenantId)).orderBy(desc(ActivityLog.createdAt)).limit(100).all(),
+    db
+      .select({
+        id: SendLog.id,
+        type: SendLog.status,
+        summary: SendLog.subject,
+        detail: SendLog.vendorName,
+        toEmail: SendLog.toEmail,
+        createdAt: SendLog.createdAt,
+      })
+      .from(SendLog)
+      .where(eq(SendLog.tenantId, tenantId))
+      .orderBy(desc(SendLog.createdAt))
+      .limit(limit)
+      .all(),
+    db
+      .select({
+        id: ActivityLog.id,
+        type: ActivityLog.type,
+        summary: ActivityLog.summary,
+        detail: ActivityLog.detail,
+        createdAt: ActivityLog.createdAt,
+      })
+      .from(ActivityLog)
+      .where(eq(ActivityLog.tenantId, tenantId))
+      .orderBy(desc(ActivityLog.createdAt))
+      .limit(limit)
+      .all(),
   ]);
-  const mapped = [
-    ...sends.map((s) => ({
-      id: s.id,
-      type: s.status === "sent" ? "email_sent" : "email_failed",
-      summary: s.subject,
-      detail: `${s.vendorName} → ${s.toEmail}`,
-      status: s.status,
-      createdAt: s.createdAt,
-    })),
-    ...activities.map((a) => ({
-      id: a.id,
-      type: a.type,
-      summary: a.summary,
-      detail: a.detail || "",
-      status: null as string | null,
-      createdAt: a.createdAt,
-    })),
-  ].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 100);
+  const mapped: Array<{
+    id: string;
+    type: string;
+    summary: string;
+    detail: string;
+    status: string | null;
+    createdAt: string;
+  }> = [];
+  let si = 0;
+  let ai = 0;
+  while (mapped.length < limit && (si < sends.length || ai < activities.length)) {
+    const s = si < sends.length ? sends[si] : null;
+    const a = ai < activities.length ? activities[ai] : null;
+    if (s && (!a || s.createdAt >= a.createdAt)) {
+      mapped.push({
+        id: s.id,
+        type: s.type === "sent" ? "email_sent" : "email_failed",
+        summary: s.summary,
+        detail: `${s.detail} → ${s.toEmail}`,
+        status: s.type,
+        createdAt: s.createdAt,
+      });
+      si++;
+    } else if (a) {
+      mapped.push({
+        id: a.id,
+        type: a.type,
+        summary: a.summary,
+        detail: a.detail || "",
+        status: null,
+        createdAt: a.createdAt,
+      });
+      ai++;
+    }
+  }
   return c.json(ApiResponse(true, null, mapped));
 });
 
@@ -281,6 +376,7 @@ const createApiKeySchema = z.object({
 admin.get("/api-keys", async (c) => {
   const db = drizzle(c.env.D1_DATABASE);
   const tenantId = c.get("tenantId");
+  const limit = Math.min(Math.max(parseInt(c.req.query("limit") || "100", 10), 1), 200);
   const keys = await db
     .select({
       id: ApiKey.id,
@@ -293,6 +389,7 @@ admin.get("/api-keys", async (c) => {
     .from(ApiKey)
     .where(eq(ApiKey.tenantId, tenantId))
     .orderBy(desc(ApiKey.createdAt))
+    .limit(limit)
     .all();
   return c.json(ApiResponse(true, null, keys));
 });

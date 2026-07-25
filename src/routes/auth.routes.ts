@@ -9,6 +9,8 @@ import { signJWT, verifyJWT } from "../lib/jwt";
 import { generateResetToken, verifyResetToken } from "../lib/reset-token";
 import { hashPassword, verifyPassword, generateApiKey, hashApiKey } from "../lib/password";
 import { ApiResponse } from "../utils/response.util";
+import { RateLimitMiddleware } from "../middlewares/rate-limit.middleware";
+import { EmailService } from "../services/email.service";
 import type { AppEnv } from "../lib/app-env";
 
 const JWT_EXPIRY_SEC = 86400;
@@ -70,8 +72,10 @@ auth.post("/signup", zValidator("json", signupSchema), async (c) => {
     id: tenantId, name: tenantName, slug: tenantSlug,
   }).execute();
 
+  const verifyToken = crypto.randomUUID();
+
   await db.insert(User).values({
-    id: userId, tenantId, email, passwordHash, name, role: "admin",
+    id: userId, tenantId, email, passwordHash, name, role: "admin", verificationToken: verifyToken,
   }).execute();
 
   await db.insert(ApiKey).values({
@@ -85,6 +89,22 @@ auth.post("/signup", zValidator("json", signupSchema), async (c) => {
   const token = await signJWT({ sub: userId, tenantId, role: "admin" }, c.env.JWT_SECRET, JWT_EXPIRY_SEC);
   const refreshToken = await signJWT({ sub: userId, tenantId, role: "admin" }, c.env.JWT_SECRET, REFRESH_EXPIRY_SEC);
   setAuthCookies(c, token, refreshToken);
+
+  const verifyUrl = `${new URL(c.req.url).origin}/api/auth/verify-email?token=${verifyToken}`;
+  c.executionCtx.waitUntil(
+    (async () => {
+      try {
+        const es = new EmailService(c.env, tenantId);
+        await es.sendEmail(c, {
+          to: email,
+          subject: "Verify your email address",
+          content: `<p>Welcome to mailroute! Click the link to verify your email:</p><p><a href="${verifyUrl}">${verifyUrl}</a></p>`,
+        });
+      } catch (err) {
+        console.error("Failed to send verification email:", err);
+      }
+    })(),
+  );
 
   return c.json(ApiResponse(true, null, {
     user: { id: userId, email, name, role: "admin" },
@@ -186,7 +206,21 @@ auth.post("/forgot-password", zValidator("json", forgotPasswordSchema), async (c
   const token = await generateResetToken(email, c.env.JWT_SECRET);
   const resetUrl = `${new URL(c.req.url).origin}/admin/reset-password?token=${token}`;
 
-  console.log("RESET_PASSWORD_LINK:", resetUrl);
+  c.executionCtx.waitUntil(
+    (async () => {
+      try {
+        const emailService = new EmailService(c.env, user.tenantId);
+        await emailService.sendEmail(c, {
+          to: email,
+          subject: "Password Reset Request",
+          content: `<p>You requested a password reset. Click the link below to reset your password:</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>This link expires in 15 minutes.</p>`,
+        });
+      } catch (err) {
+        console.error("Failed to send reset email:", err);
+        console.log("RESET_PASSWORD_LINK:", resetUrl);
+      }
+    })(),
+  );
 
   return c.json(ApiResponse(true, "If that email exists, a reset link has been sent"));
 });
@@ -232,7 +266,7 @@ const changePasswordSchema = z.object({
   newPassword: z.string().min(8).max(128),
 });
 
-auth.post("/change-password", requireAuth, zValidator("json", changePasswordSchema), async (c) => {
+auth.post("/change-password", requireAuth, RateLimitMiddleware, zValidator("json", changePasswordSchema), async (c) => {
   const db = drizzle(c.env.D1_DATABASE);
   const userId = c.get("userId");
   const { currentPassword, newPassword } = c.req.valid("json");
@@ -276,6 +310,19 @@ auth.post("/refresh", async (c) => {
 auth.post("/logout", requireAuth, async (c) => {
   clearAuthCookies(c);
   return c.json(ApiResponse(true, "Logged out"));
+});
+
+auth.get("/verify-email", async (c) => {
+  const token = c.req.query("token");
+  if (!token) return c.json(ApiResponse(false, "Missing verification token"), 400);
+
+  const db = drizzle(c.env.D1_DATABASE);
+  const user = await db.select().from(User).where(eq(User.verificationToken, token)).get();
+  if (!user) return c.json(ApiResponse(false, "Invalid or expired verification token"), 400);
+
+  await db.update(User).set({ emailVerified: true, verificationToken: null }).where(eq(User.id, user.id)).execute();
+
+  return c.json(ApiResponse(true, "Email verified successfully"));
 });
 
 export async function requireAuth(

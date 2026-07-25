@@ -6,6 +6,8 @@ export interface SendArgs {
   to: string;
   subject: string;
   html: string;
+  cc?: string;
+  bcc?: string;
   /** Parsed from the vendor row's JSON `config` column; {} when null. */
   config: Record<string, unknown>;
 }

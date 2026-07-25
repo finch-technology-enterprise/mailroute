@@ -9,9 +9,10 @@ import { ADAPTERS } from "../vendors";
 import { sendPushNotification } from "./push.service";
 
 const VENDOR_TIMEOUT_MS = 10_000;
-const RETRY_DELAY_MS = 2_000;
 const CIRCUIT_BREAKER_THRESHOLD = 5;
 const CIRCUIT_BREAKER_WINDOW_MS = 300_000;
+const MAX_RETRIES = 3;
+const RETRY_BASE_DELAY_MS = 1_000;
 
 function redactError(msg: string): string {
   return msg.replace(/(token|key|secret|auth|password|api[_-]?key)[=:]\s*\S+/gi, "$1=[REDACTED]");
@@ -21,6 +22,8 @@ export interface EmailPayload {
   to: string;
   subject: string;
   content: string;
+  cc?: string;
+  bcc?: string;
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
@@ -148,6 +151,8 @@ export class EmailService {
             to: payload.to,
             subject: payload.subject,
             html: payload.content,
+            cc: payload.cc,
+            bcc: payload.bcc,
             config: parseConfig(vendor.config),
           }),
           VENDOR_TIMEOUT_MS,
@@ -204,53 +209,61 @@ export class EmailService {
         await this.recordFailedAttempt(c, vendor, payload, message, durationMs);
 
         if (isTransientError(error)) {
-          try {
-            await sleep(RETRY_DELAY_MS);
-            await attemptSend();
-            const retryDurationMs = Date.now() - startTime - RETRY_DELAY_MS;
-            LogToNewRelic(c, "sendEmail:retry-success", {
-              vendor: vendor.name,
-              "context.to": payload.to,
-            });
-            c.executionCtx.waitUntil(
-              drizzle(c.env.D1_DATABASE)
-                .insert(SendLog)
-                .values({
-                  id: crypto.randomUUID(),
-                  tenantId: this.tenantId,
-                  vendorId: vendor.id,
-                  vendorName: vendor.name,
-                  toEmail: payload.to,
-                  subject: payload.subject,
-                  status: "sent",
-                  durationMs: retryDurationMs,
-                  createdAt: new Date().toISOString(),
-                })
-                .execute()
-                .catch(() => {}),
-            );
-            c.executionCtx.waitUntil(
-              sendPushNotification(c.env, {
-                title: "Email sent (after retry)",
-                body: `"${payload.subject}" → ${payload.to} via ${vendor.name}`,
-                tag: "email-sent",
-              }).catch((e) => {
-                console.error("Push notification failed:", e);
-              }),
-            );
-            return;
-          } catch (retryError) {
-            const retryMessage =
-              retryError instanceof Error
-                ? retryError.message
-                : String(retryError);
-            errors.push(`${vendor.name}: retry failed (${retryMessage})`);
-            LogToNewRelic(c, "sendEmail:retry-failed", {
-              level: "WARN",
-              vendor: vendor.name,
-              "context.error": retryMessage,
-            });
+          let retrySuccess = false;
+          for (let retry = 1; retry <= MAX_RETRIES; retry++) {
+            const delay = RETRY_BASE_DELAY_MS * Math.pow(2, retry - 1);
+            try {
+              await sleep(delay);
+              await attemptSend();
+              const retryDurationMs = Date.now() - startTime - delay;
+              LogToNewRelic(c, "sendEmail:retry-success", {
+                vendor: vendor.name,
+                "context.to": payload.to,
+                "context.retry": retry,
+              });
+              c.executionCtx.waitUntil(
+                drizzle(c.env.D1_DATABASE)
+                  .insert(SendLog)
+                  .values({
+                    id: crypto.randomUUID(),
+                    tenantId: this.tenantId,
+                    vendorId: vendor.id,
+                    vendorName: vendor.name,
+                    toEmail: payload.to,
+                    subject: payload.subject,
+                    status: "sent",
+                    durationMs: retryDurationMs,
+                    createdAt: new Date().toISOString(),
+                  })
+                  .execute()
+                  .catch(() => {}),
+              );
+              c.executionCtx.waitUntil(
+                sendPushNotification(c.env, {
+                  title: "Email sent (after retry)",
+                  body: `"${payload.subject}" → ${payload.to} via ${vendor.name}`,
+                  tag: "email-sent",
+                }).catch((e) => {
+                  console.error("Push notification failed:", e);
+                }),
+              );
+              retrySuccess = true;
+              break;
+            } catch (retryError) {
+              const retryMessage =
+                retryError instanceof Error
+                  ? retryError.message
+                  : String(retryError);
+              errors.push(`${vendor.name}: retry ${retry}/${MAX_RETRIES} failed (${retryMessage})`);
+              LogToNewRelic(c, "sendEmail:retry-failed", {
+                level: "WARN",
+                vendor: vendor.name,
+                "context.error": retryMessage,
+                "context.retry": retry,
+              });
+            }
           }
+          if (retrySuccess) return;
         }
       }
     }

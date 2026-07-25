@@ -23,6 +23,8 @@ export const User = sqliteTable("users", {
   passwordHash: text("password_hash").notNull(),
   name: text("name").notNull().default(""),
   role: text("role").notNull().default("admin"),
+  emailVerified: integer("email_verified", { mode: "boolean" }).notNull().default(false),
+  verificationToken: text("verification_token"),
   createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
   updatedAt: text("updated_at").$defaultFn(() => new Date().toISOString()),
 });

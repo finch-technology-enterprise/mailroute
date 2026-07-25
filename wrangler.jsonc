@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
+  "account_id": "28970b96b4880e4f41cc0487104898a0",
   "name": "mailroute",
-  // account_id is read from CLOUDFLARE_ACCOUNT_ID env var when omitted
   "main": "src/index.ts",
   "compatibility_date": "2026-06-10",
   "workers_dev": true,
@@ -12,11 +12,10 @@
   "d1_databases": [
     {
       "binding": "D1_DATABASE",
+      "database_name": "mailroute-db",
       "database_id": "2a25996b-5ffc-4ee3-b03c-8d72adbad1e1"
     }
   ],
-  // Per-IP+route rate limiting for the send endpoints. Counters are per
-  // Cloudflare location; period must be 10 or 60 seconds.
   "ratelimits": [
     {
       "name": "RATE_LIMITER",
@@ -27,6 +26,9 @@
       }
     }
   ],
+  "build": {
+    "command": "npm run build:admin && npm run build"
+  },
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1,
