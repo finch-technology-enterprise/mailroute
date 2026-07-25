@@ -280,7 +280,7 @@ function isTransientError(error: unknown): boolean {
     msg.includes("econnrefused") ||
     msg.includes("econnreset") ||
     msg.includes("etimedout") ||
-    msg.includes("5") ||
+    /\b5\d{2}\b/.test(msg) ||  // only match HTTP 5xx status codes
     msg.includes("too many requests") ||
     msg.includes("rate limit") ||
     msg.includes("unavailable") ||
