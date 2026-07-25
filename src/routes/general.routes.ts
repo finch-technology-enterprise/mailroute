@@ -191,15 +191,22 @@ general.post(
 
     const tenantId = c.get("tenantId");
     const emailService = new EmailService(c.env, tenantId);
-    const sendIds: string[] = [];
 
-    for (const email of emails) {
-      const sendId = crypto.randomUUID();
-      sendIds.push(sendId);
-      sendInBackground(c, emailService, email, sendId);
+    const CONCURRENT_SENDS = 10;
+    const chunks: EmailPayload[][] = [];
+    for (let i = 0; i < emails.length; i += CONCURRENT_SENDS) {
+      chunks.push(emails.slice(i, i + CONCURRENT_SENDS));
+    }
+    const allSendIds: string[] = [];
+    for (const chunk of chunks) {
+      const sendIds = chunk.map(() => crypto.randomUUID());
+      allSendIds.push(...sendIds);
+      chunk.forEach((email, i) => {
+        sendInBackground(c, emailService, email, sendIds[i]);
+      });
     }
 
-    return c.json(ApiResponse(true, "Emails are being sent", { sendIds }), 200);
+    return c.json(ApiResponse(true, "Emails are being sent", { sendIds: allSendIds }), 200);
   },
 );
 
