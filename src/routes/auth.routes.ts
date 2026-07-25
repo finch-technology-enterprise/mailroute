@@ -203,7 +203,7 @@ auth.post("/forgot-password", zValidator("json", forgotPasswordSchema), async (c
   const user = await db.select().from(User).where(eq(User.email, email)).get();
   if (!user) return c.json(ApiResponse(false, "If that email exists, a reset link has been sent"), 200);
 
-  const token = await generateResetToken(email, c.env.JWT_SECRET);
+  const token = await generateResetToken(email, c.env.RESET_TOKEN_SECRET!);
   const resetUrl = `${new URL(c.req.url).origin}/admin/reset-password?token=${token}`;
 
   c.executionCtx.waitUntil(
@@ -234,7 +234,7 @@ auth.post("/reset-password", zValidator("json", resetPasswordSchema), async (c) 
   const db = drizzle(c.env.D1_DATABASE);
   const { token, password } = c.req.valid("json");
 
-  const payload = await verifyResetToken(token, c.env.JWT_SECRET);
+  const payload = await verifyResetToken(token, c.env.RESET_TOKEN_SECRET!);
   if (!payload) return c.json(ApiResponse(false, "Invalid or expired token"), 400);
 
   const user = await db.select().from(User).where(eq(User.email, payload.email)).get();

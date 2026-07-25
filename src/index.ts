@@ -116,6 +116,8 @@ function validateEnv(env: CloudflareBindings): string | null {
   const requiredSecrets: [string, string | undefined][] = [
     ["JWT_SECRET", env.JWT_SECRET],
     ["CONFIG_ENCRYPTION_KEY", env.CONFIG_ENCRYPTION_KEY],
+    ["RESET_TOKEN_SECRET", env.RESET_TOKEN_SECRET],
+    ["WEBHOOK_SECRET", env.WEBHOOK_SECRET],
   ];
   for (const [name, value] of requiredSecrets) {
     if (!value || value.startsWith("dev-") || value.startsWith("<") || value.startsWith("your-")) {

@@ -29,4 +29,8 @@ export interface CloudflareBindings {
   ADMIN_ASSETS: Fetcher;
 
   JWT_SECRET: string;
+  WEBHOOK_SECRET?: string;
+  RESET_TOKEN_SECRET?: string;
+  VAPID_PUBLIC_KEY?: string;
+  VAPID_PRIVATE_KEY?: string;
 }

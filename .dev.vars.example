@@ -12,6 +12,16 @@
 # in the X-API-AUTH-KEY header.
 API_AUTH_KEY=your-secret-api-auth-key
 
+# REQUIRED: Secret for signing password reset tokens.
+RESET_TOKEN_SECRET=dev-reset-token-secret
+
+# REQUIRED: Webhook signing secret.
+WEBHOOK_SECRET=dev-webhook-secret
+
+# Optional: VAPID keys for Web Push notifications.
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+
 # REQUIRED: New Relic license key for observability logging.
 NEW_RELIC_LICENSE_KEY=your-new-relic-license-key
 
