@@ -7,6 +7,18 @@ import { CloudflareBindings } from "../lib/cloudflare.binding";
 import { ApiResponse } from "../utils/response.util";
 import { SendLog } from "../db/schema";
 
+async function verifyWebhookSignature(body: string, signature: string, secret: string): Promise<boolean> {
+  if (!secret || !signature) return false;
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(body));
+  const expected = btoa(String.fromCharCode(...new Uint8Array(sig)));
+  if (expected.length !== signature.length) return false;
+  let result = 0;
+  for (let i = 0; i < expected.length; i++) result |= expected.charCodeAt(i) ^ signature.charCodeAt(i);
+  return result === 0;
+}
+
 const webhook = new Hono<{ Bindings: CloudflareBindings }>();
 
 const statusUpdateSchema = z.object({
@@ -17,6 +29,12 @@ const statusUpdateSchema = z.object({
 });
 
 webhook.post("/:vendor", zValidator("json", statusUpdateSchema), async (c) => {
+  const rawBody = await c.req.raw.clone().text();
+  const signature = c.req.header("X-Webhook-Signature");
+  if (!signature || !(await verifyWebhookSignature(rawBody, signature, c.env.WEBHOOK_SECRET || ""))) {
+    return c.json(ApiResponse(false, "Invalid webhook signature"), 401);
+  }
+
   const vendor = c.req.param("vendor");
   const { messageId, status, error } = c.req.valid("json");
 

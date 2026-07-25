@@ -346,6 +346,29 @@ export async function requireAuth(
   if (!payload) {
     return c.json(ApiResponse(false, "Invalid or expired token"), 401);
   }
+
+  const method = c.req.method;
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+    const origin = c.req.header("Origin");
+    const referer = c.req.header("Referer");
+    const isLocalDev = new URL(c.req.url).hostname === "localhost" || new URL(c.req.url).hostname === "127.0.0.1";
+    if (!isLocalDev) {
+      if (!origin && !referer) {
+        return c.json(ApiResponse(false, "CSRF validation failed"), 403);
+      }
+      const host = c.req.header("Host");
+      if (!host) {
+        return c.json(ApiResponse(false, "CSRF validation failed"), 403);
+      }
+      if (origin && !origin.includes(host)) {
+        return c.json(ApiResponse(false, "CSRF validation failed"), 403);
+      }
+      if (referer && !referer.includes(host)) {
+        return c.json(ApiResponse(false, "CSRF validation failed"), 403);
+      }
+    }
+  }
+
   c.set("userId", payload.sub);
   c.set("tenantId", payload.tenantId);
   c.set("userRole", payload.role);
