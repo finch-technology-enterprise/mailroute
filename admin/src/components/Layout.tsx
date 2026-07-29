@@ -10,6 +10,7 @@ const navItems = [
   { to: "/templates", label: "Templates", icon: "templates" },
   { to: "/test-send", label: "Test Send", icon: "test-send" },
   { to: "/activity", label: "Activity", icon: "activity" },
+  { to: "/api-docs", label: "API Docs", icon: "api-docs" },
   { to: "/api-keys", label: "API Keys", icon: "key" },
   { to: "/settings", label: "Settings", icon: "config" },
 ];

@@ -101,9 +101,25 @@ function cspWithNonce(nonce: string): string {
   ].join("; ");
 }
 
-async function withSecurityHeaders(res: Response, nonce: string): Promise<Response> {
+function adminCspWithNonce(nonce: string): string {
+  return [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}'`,
+    `style-src 'self' 'nonce-${nonce}' 'unsafe-inline'`,
+    "img-src 'self' data: https:",
+    "connect-src 'self'",
+    "font-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "upgrade-insecure-requests",
+  ].join("; ");
+}
+
+async function withSecurityHeaders(res: Response, nonce: string, isAdmin?: boolean): Promise<Response> {
   const headers = new Headers(res.headers);
-  headers.set("Content-Security-Policy", cspWithNonce(nonce));
+  headers.set("Content-Security-Policy", isAdmin ? adminCspWithNonce(nonce) : cspWithNonce(nonce));
   headers.set("X-Content-Type-Options", "nosniff");
   headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
@@ -132,11 +148,11 @@ app.get("/admin*", async (c) => {
   path = path === "/" ? "/index.html" : path;
   const reqUrl = new URL(path, "http://assets");
   const res = await c.env.ADMIN_ASSETS.fetch(reqUrl);
-  if (res.status === 200) return withSecurityHeaders(res, nonce);
+  if (res.status === 200) return withSecurityHeaders(res, nonce, true);
   const fallback = await c.env.ADMIN_ASSETS.fetch(
     new URL("/index.html", "http://assets"),
   );
-  if (fallback.status === 200) return withSecurityHeaders(fallback, nonce);
+  if (fallback.status === 200) return withSecurityHeaders(fallback, nonce, true);
   return c.text("Not found", 404);
 });
 

@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import SwaggerUI from "swagger-ui-react";
 import "swagger-ui-react/swagger-ui.css";
 import AnimatedPage from "../components/AnimatedPage";
-import { hasAuthKey } from "../api/client";
 import { Link } from "react-router-dom";
 
 export default function ApiDocsPage() {
