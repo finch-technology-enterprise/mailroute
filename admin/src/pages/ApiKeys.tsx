@@ -6,7 +6,7 @@ import EmptyState from "../components/EmptyState";
 import AnimatedPage from "../components/AnimatedPage";
 import Skeleton from "../components/Skeleton";
 import InlineError from "../components/InlineError";
-import { get, post, del } from "../api/client";
+import { get, post, del, setAuthKey } from "../api/client";
 import type { ApiResponse } from "../types";
 import Icon from "../components/Icon";
 
@@ -64,6 +64,7 @@ export default function ApiKeys() {
     try {
       const res = await post<ApiResponse<{ rawKey: string; name: string }>>("/api-keys", { name: newKeyName.trim() });
       setCreatedKey(res.data.rawKey);
+      setAuthKey(res.data.rawKey);
       toast("API key created", "success");
       fetchKeys();
     } catch (err) {
