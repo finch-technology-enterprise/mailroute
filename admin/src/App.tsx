@@ -46,8 +46,8 @@ export default function App() {
               <Route path="test-send" element={<TestSendPage />} />
               <Route path="activity" element={<ActivityLogPage />} />
               <Route path="api-docs" element={<ApiDocsPage />} />
-              <Route path="settings" element={<ChangePasswordPage />} />
               <Route path="api-keys" element={<ApiKeysPage />} />
+              <Route path="settings" element={<ChangePasswordPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
           </Routes>

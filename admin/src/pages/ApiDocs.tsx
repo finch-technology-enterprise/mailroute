@@ -10,22 +10,25 @@ export default function ApiDocsPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
         const res = await fetch("/api/openapi.json");
+        if (cancelled) return;
         if (!res.ok) throw new Error(`Failed to load spec (${res.status})`);
         setSpec(await res.json());
       } catch (err) {
+        if (cancelled) return;
         setError(err instanceof Error ? err.message : "Failed to load API spec");
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
+    return () => { cancelled = true; };
   }, []);
 
-  const apiKey = typeof window !== "undefined"
-    ? localStorage.getItem("mailroute_api_key")
-    : null;
+  let apiKey: string | null = null;
+  try { apiKey = localStorage.getItem("mailroute_api_key"); } catch {}
 
   if (loading) {
     return (
