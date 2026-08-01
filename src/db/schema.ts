@@ -90,6 +90,8 @@ export const SendLog = sqliteTable("send_logs", {
   error: text("error"),
   templateSlug: text("template_slug"),
   durationMs: integer("duration_ms"),
+  // Provider-assigned message ID for webhook correlation
+  providerMessageId: text("provider_message_id"),
   createdAt: text("created_at").notNull(),
 });
 
@@ -120,9 +122,17 @@ export const ScheduledEmail = sqliteTable("scheduled_emails", {
   sendAt: text("send_at").notNull(),
   status: text("status").notNull().default("pending"),
   error: text("error"),
+  // Atomic claim / lease tracking
+  lockedAt: text("locked_at"),
+  attempt: integer("attempt").notNull().default(0),
+  // Provider-assigned message ID (mirrored here for webhook correlation
+  // when a scheduled job's send_log row is cleaned up)
+  providerMessageId: text("provider_message_id"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
+
+export type ScheduledEmailRow = typeof ScheduledEmail.$inferSelect;
 
 export const TrackingEvent = sqliteTable("tracking_events", {
   id: text("id").primaryKey(),
@@ -143,3 +153,65 @@ export const PushSubscription = sqliteTable("push_subscriptions", {
   userAgent: text("user_agent"),
   createdAt: text("created_at").notNull(),
 });
+
+// --- Durable send job tracking ---
+
+export const SendJob = sqliteTable("send_jobs", {
+  id: text("id").primaryKey(),
+  tenantId: text("tenant_id").notNull(),
+  status: text("status").notNull().default("queued"),
+  // friendly send_id returned to callers
+  sendId: text("send_id").notNull().unique(),
+  // provider-assigned message ID (populated on acceptance)
+  providerMessageId: text("provider_message_id"),
+  // set when this job originated from a scheduled_emails row
+  scheduledEmailId: text("scheduled_email_id"),
+  // provider that accepted the message
+  vendorId: text("vendor_id"),
+  vendorName: text("vendor_name"),
+  // JSON snapshot of EmailPayload for retry / webhook replay
+  payload: text("payload").notNull(),
+  error: text("error"),
+  attemptCount: integer("attempt_count").notNull().default(0),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export type SendJobRow = typeof SendJob.$inferSelect;
+
+// --- Per-attempt delivery record ---
+
+export const DeliveryAttempt = sqliteTable("delivery_attempts", {
+  id: text("id").primaryKey(),
+  jobId: text("job_id").notNull(),
+  vendorId: text("vendor_id"),
+  vendorName: text("vendor_name").notNull(),
+  attemptNumber: integer("attempt_number").notNull(),
+  status: text("status").notNull(),
+  providerMessageId: text("provider_message_id"),
+  vendorResponse: text("vendor_response"),
+  durationMs: integer("duration_ms"),
+  error: text("error"),
+  createdAt: text("created_at").notNull(),
+});
+
+export type DeliveryAttemptRow = typeof DeliveryAttempt.$inferSelect;
+
+// --- Raw webhook events for idempotent processing ---
+
+export const DeliveryEvent = sqliteTable("delivery_events", {
+  id: text("id").primaryKey(),
+  jobId: text("job_id"),
+  vendorName: text("vendor_name").notNull(),
+  // the provider's own event/tracking ID from the webhook payload
+  providerEventId: text("provider_event_id").notNull(),
+  eventType: text("event_type").notNull(),
+  providerMessageId: text("provider_message_id"),
+  // raw payload so we can replay from durable state
+  rawPayload: text("raw_payload").notNull(),
+  // idempotency: provider_event_id scoped to vendor name
+  idempotencyKey: text("idempotency_key").notNull(),
+  processedAt: text("processed_at").notNull(),
+});
+
+export type DeliveryEventRow = typeof DeliveryEvent.$inferSelect;

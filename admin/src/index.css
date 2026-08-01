@@ -951,3 +951,34 @@ code,
     background: rgba(255, 255, 255, 0.06);
   }
 }
+
+/* Swagger UI overrides */
+.swagger-container .swagger-ui {
+  color: var(--text-primary);
+}
+.swagger-container .swagger-ui .topbar { display: none; }
+.swagger-container .swagger-ui .info { margin: 16px 0; }
+.swagger-container .swagger-ui .info .title {
+  color: var(--text-primary);
+  font-size: 20px;
+}
+.swagger-container .swagger-ui .info .description p {
+  color: var(--text-secondary);
+}
+.swagger-container .swagger-ui .opblock-tag {
+  color: var(--text-primary);
+  font-size: 14px;
+}
+.swagger-container .swagger-ui .opblock .opblock-summary-description {
+  color: var(--text-secondary);
+}
+.swagger-container .swagger-ui .opblock .opblock-summary-method {
+  font-size: 12px;
+}
+.swagger-container .swagger-ui table thead tr td,
+.swagger-container .swagger-ui table thead tr th {
+  color: var(--text-secondary);
+}
+.swagger-container .swagger-ui .btn {
+  border-radius: 6px;
+}

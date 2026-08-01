@@ -6,7 +6,7 @@ import EmptyState from "../components/EmptyState";
 import AnimatedPage from "../components/AnimatedPage";
 import Skeleton from "../components/Skeleton";
 import InlineError from "../components/InlineError";
-import { get, post, del } from "../api/client";
+import { get, post, del, setAuthKey } from "../api/client";
 import type { ApiResponse } from "../types";
 import Icon from "../components/Icon";
 
@@ -30,6 +30,8 @@ export default function ApiKeys() {
   const [copied, setCopied] = useState(false);
   const [revokeTarget, setRevokeTarget] = useState<ApiKeyRow | null>(null);
   const [revoking, setRevoking] = useState(false);
+  const [showAddExisting, setShowAddExisting] = useState(false);
+  const [existingKeyValue, setExistingKeyValue] = useState("");
   const { toast } = useToast();
 
   const fetchKeys = useCallback(async () => {
@@ -64,6 +66,7 @@ export default function ApiKeys() {
     try {
       const res = await post<ApiResponse<{ rawKey: string; name: string }>>("/api-keys", { name: newKeyName.trim() });
       setCreatedKey(res.data.rawKey);
+      setAuthKey(res.data.rawKey);
       toast("API key created", "success");
       fetchKeys();
     } catch (err) {
@@ -83,6 +86,20 @@ export default function ApiKeys() {
         toast("Failed to copy", "error");
       }
     }
+  };
+
+  const openAddExisting = () => {
+    setExistingKeyValue("");
+    setShowAddExisting(true);
+  };
+
+  const handleSaveExisting = () => {
+    const trimmed = existingKeyValue.trim();
+    if (!trimmed) return;
+    setAuthKey(trimmed);
+    setShowAddExisting(false);
+    setExistingKeyValue("");
+    toast("API key saved to browser", "success");
   };
 
   const handleRevoke = async () => {
@@ -107,13 +124,22 @@ export default function ApiKeys() {
     <AnimatedPage>
       <div className="mb-6 flex items-center justify-between" style={{ flexWrap: "wrap", gap: 12 }}>
         <h1>API Keys</h1>
-        <motion.button
-          className="apple-btn apple-btn-primary"
-          onClick={openCreate}
-          whileTap={{ scale: 0.97 }}
-        >
-          Create Key
-        </motion.button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <motion.button
+            className="apple-btn"
+            onClick={openAddExisting}
+            whileTap={{ scale: 0.97 }}
+          >
+            Add Existing Key
+          </motion.button>
+          <motion.button
+            className="apple-btn apple-btn-primary"
+            onClick={openCreate}
+            whileTap={{ scale: 0.97 }}
+          >
+            Create Key
+          </motion.button>
+        </div>
       </div>
 
       {error && <InlineError error={error} onRetry={fetchKeys} />}
@@ -289,6 +315,58 @@ export default function ApiKeys() {
           </motion.div>
         )}
       </AnimatePresence>
+
+        {showAddExisting && (
+          <motion.div
+            key="add-existing-dialog"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: "fixed", inset: 0, zIndex: 100,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)",
+            }}
+            onClick={() => setShowAddExisting(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="card p-6"
+              style={{ width: "90%", maxWidth: 420 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16 }}>Add Existing Key</h2>
+              <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>
+                Paste an API key you previously created to use it in the API Docs playground.
+              </p>
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>API key</label>
+                <input
+                  className="apple-input"
+                  style={{ width: "100%", fontSize: 14, padding: "8px 12px", minHeight: 36, fontFamily: "var(--font-mono, monospace)" }}
+                  placeholder="mr_..."
+                  value={existingKeyValue}
+                  onChange={(e) => setExistingKeyValue(e.target.value)}
+                  autoFocus
+                  onKeyDown={(e) => { if (e.key === "Enter") handleSaveExisting(); }}
+                />
+              </div>
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <motion.button className="apple-btn" onClick={() => setShowAddExisting(false)} whileTap={{ scale: 0.97 }}>Cancel</motion.button>
+                <motion.button
+                  className="apple-btn apple-btn-primary"
+                  onClick={handleSaveExisting}
+                  disabled={!existingKeyValue.trim()}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  Save
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
 
       <ConfirmDialog
         open={!!revokeTarget}
