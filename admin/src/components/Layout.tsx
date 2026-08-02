@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { checkAuth, hasAuthKey, clearAuthKey, refreshToken } from "../api/client";
 import { useState, useEffect } from "react";
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import Icon from "./Icon";
 
 const navItems = [
@@ -33,40 +33,74 @@ function ThemeToggle({ collapsed }: { collapsed: boolean }) {
     localStorage.setItem("mailroute-theme", next);
   };
 
+  const label = mode === "dark" ? "Switch to auto theme" : mode === "light" ? "Switch to dark theme" : "Switch to light theme";
+
   if (collapsed) {
     return (
-      <motion.button onClick={() => set(modes[(modes.indexOf(mode) + 1) % modes.length])} whileTap={{ scale: 0.95 }} style={{ width: "100%", padding: "8px 0", border: "none", background: "transparent", color: "var(--text-tertiary)", cursor: "pointer", borderRadius: "var(--radius-md)", fontSize: 16 }} aria-label={`Theme: ${mode}`}>
-        {mode === "dark" ? "\u{1F319}" : mode === "light" ? "\u2600\uFE0F" : "\u25D0"}
+      <motion.button
+        onClick={() => set(modes[(modes.indexOf(mode) + 1) % modes.length])}
+        whileTap={{ scale: 0.95 }}
+        style={{
+          width: "100%",
+          padding: "8px 0",
+          border: "none",
+          background: "transparent",
+          color: "var(--text-tertiary)",
+          cursor: "pointer",
+          borderRadius: "var(--radius-md)",
+          fontSize: 16,
+        }}
+        aria-label={label}
+        title={label}
+      >
+        {mode === "dark" ? "🌙" : mode === "light" ? "☀️" : "◐"}
       </motion.button>
     );
   }
 
   return (
-    <div style={{ display: "flex", borderRadius: "var(--radius-md)", border: "1px solid var(--border)", overflow: "hidden", background: "var(--bg-primary)" }}>
-      {modes.map((m) => (
-        <button
-          key={m}
-          onClick={() => set(m)}
-          style={{
-            flex: 1,
-            padding: "6px 0",
-            border: "none",
-            background: mode === m ? "var(--accent)" : "transparent",
-            color: mode === m ? "#fff" : "var(--text-tertiary)",
-            cursor: "pointer",
-            fontSize: 11,
-            fontWeight: 500,
-            transition: "all 0.15s ease",
-          }}
-        >
-          {m === "dark" ? "Dark" : m === "light" ? "Light" : "Auto"}
-        </button>
-      ))}
+    <div
+      role="group"
+      aria-label="Theme selection"
+      style={{
+        display: "flex",
+        borderRadius: "var(--radius-md)",
+        border: "1px solid var(--border)",
+        overflow: "hidden",
+        background: "var(--bg-primary)",
+      }}
+    >
+      {modes.map((m) => {
+        const isActive = mode === m;
+        return (
+          <motion.button
+            key={m}
+            onClick={() => set(m)}
+            whileTap={{ scale: 0.95 }}
+            style={{
+              flex: 1,
+              padding: "6px 0",
+              border: "none",
+              background: isActive ? "var(--accent)" : "transparent",
+              color: isActive ? "#fff" : "var(--text-tertiary)",
+              cursor: "pointer",
+              fontSize: 11,
+              fontWeight: 500,
+              transition: "background 0.15s ease, color 0.15s ease",
+            }}
+            aria-pressed={isActive}
+          >
+            {m === "dark" ? "Dark" : m === "light" ? "Light" : "Auto"}
+          </motion.button>
+        );
+      })}
     </div>
   );
 }
 
 function NavPills({ collapsed }: { collapsed: boolean }) {
+  const shouldReduce = useReducedMotion();
+
   return (
     <div className="flex flex-col gap-1" style={{ padding: collapsed ? "0 8px" : "0 12px" }}>
       {navItems.map((item) => (
@@ -74,13 +108,14 @@ function NavPills({ collapsed }: { collapsed: boolean }) {
           key={item.to}
           to={item.to}
           end={item.to === "/"}
-          className="nav-item relative py-2.5 text-sm font-medium rounded-lg transition-colors"
+          className="nav-item relative py-2.5 text-sm font-medium rounded-lg"
           style={{
             color: "var(--text-secondary)",
             letterSpacing: "-0.01em",
             display: "flex",
             justifyContent: collapsed ? "center" : "flex-start",
             padding: collapsed ? "10px 0" : "10px 12px",
+            transition: shouldReduce ? "none" : undefined,
           }}
         >
           {({ isActive }) => (
@@ -90,7 +125,12 @@ function NavPills({ collapsed }: { collapsed: boolean }) {
                   layoutId="nav-pill"
                   className="absolute inset-0 rounded-lg"
                   style={{ background: "rgba(0, 113, 227, 0.08)" }}
-                  transition={{ type: "spring", bounce: 0, duration: 0.35 }}
+                  transition={{
+                    type: "spring",
+                    bounce: 0,
+                    duration: shouldReduce ? 0 : 0.35,
+                    layout: { type: "spring", bounce: 0, duration: shouldReduce ? 0 : 0.35 },
+                  }}
                 />
               )}
               <span
@@ -112,7 +152,11 @@ function NavPills({ collapsed }: { collapsed: boolean }) {
       ))}
       <div style={{ height: 1, background: "var(--border)", margin: "4px 0" }} />
       <motion.button
-        onClick={async () => { clearAuthKey(); await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }); window.location.href = "/login"; }}
+        onClick={async () => {
+          clearAuthKey();
+          await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
+          window.location.href = "/login";
+        }}
         whileTap={{ scale: 0.97 }}
         style={{
           width: "100%",
@@ -144,13 +188,14 @@ function NavPills({ collapsed }: { collapsed: boolean }) {
 function BottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
+  const shouldReduce = useReducedMotion();
   const activeTo =
     location.pathname === "/admin" || location.pathname === "/admin/"
       ? "/"
       : location.pathname.replace("/admin", "") || "/";
 
   return (
-    <nav className="bottom-nav">
+    <nav className="bottom-nav" aria-label="Mobile navigation">
       <div className="bottom-nav-inner">
         {navItems.map((item) => {
           const isActive =
@@ -162,19 +207,16 @@ function BottomNav() {
               type="button"
               className={"bottom-nav-item" + (isActive ? " active" : "")}
               onClick={() => navigate(item.to)}
-              whileTap={{ scale: 0.93 }}
-              transition={{ type: "spring", bounce: 0, duration: 0.12 }}
-              style={{
-                position: "relative",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
+              whileTap={{ scale: shouldReduce ? 1 : 0.93 }}
+              transition={{ type: "spring", bounce: 0, duration: shouldReduce ? 0 : 0.12 }}
+              style={{ position: "relative", alignItems: "center", justifyContent: "center" }}
+              aria-current={isActive ? "page" : undefined}
             >
               {isActive && (
                 <motion.span
                   layoutId="bottom-nav-pill"
                   className="bottom-nav-pill"
-                  transition={{ type: "spring", bounce: 0, duration: 0.35 }}
+                  transition={{ type: "spring", bounce: 0, duration: shouldReduce ? 0 : 0.35 }}
                 />
               )}
               <span className="bottom-nav-icon">
@@ -204,6 +246,7 @@ function BottomNav() {
 export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const shouldReduce = useReducedMotion();
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem("mailroute-sidebar") === "collapsed");
   const [authChecked, setAuthChecked] = useState(false);
   const sidebarW = collapsed ? 64 : 240;
@@ -242,15 +285,34 @@ export default function Layout() {
       className="flex h-dvh overflow-hidden"
       style={{ background: "var(--bg-primary)", paddingTop: "var(--sat)", minWidth: 0 }}
     >
-      <nav
+      {/* Sidebar */}
+      <motion.nav
         className="sidebar-nav glass-sidebar flex-col fixed h-screen z-10"
-        style={{ width: sidebarW, overflow: "visible", transition: "width 0.2s cubic-bezier(0.16, 1, 0.3, 1)" }}
+        layout
+        style={{
+          width: sidebarW,
+          overflow: "visible",
+          transition: shouldReduce ? "none" : undefined,
+        }}
       >
-        <div style={{ padding: collapsed ? "28px 0" : "28px 20px 0", display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "space-between", marginBottom: collapsed ? 24 : 32 }}>
+        <div style={{
+          padding: collapsed ? "28px 0" : "28px 20px 0",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: collapsed ? "center" : "space-between",
+          marginBottom: collapsed ? 24 : 32,
+        }}>
           {collapsed ? (
-            <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-0.03em" }}>M</span>
+            <motion.span
+              layout
+              style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-0.03em" }}
+            >
+              M
+            </motion.span>
           ) : (
-            <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-0.03em" }}>mailroute</h2>
+            <motion.h2 layout style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-0.03em" }}>
+              mailroute
+            </motion.h2>
           )}
         </div>
         <NavPills collapsed={collapsed} />
@@ -274,17 +336,31 @@ export default function Layout() {
               gap: 10,
               fontSize: 13,
               fontWeight: 500,
-              transition: "color 0.15s",
+              transition: shouldReduce ? "none" : "color 0.15s ease",
             }}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: collapsed ? "rotate(180deg)" : "none", flexShrink: 0 }}>
+            <svg
+              width="16" height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{
+                transform: collapsed ? "rotate(180deg)" : "none",
+                flexShrink: 0,
+                transition: shouldReduce ? "none" : "transform 0.2s cubic-bezier(0.16,1,0.3,1)",
+              }}
+            >
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="9" y1="3" x2="9" y2="21" />
             </svg>
             {!collapsed && "Collapse sidebar"}
           </motion.button>
         </div>
-      </nav>
+      </motion.nav>
 
+      {/* Main content */}
       <main
         className="flex-1 overflow-y-auto"
         style={{
@@ -292,14 +368,18 @@ export default function Layout() {
           padding: "40px 36px",
           paddingBottom: 40,
           minWidth: 0,
-          transition: "margin-left 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
+          transition: shouldReduce ? "none" : "margin-left 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
           WebkitOverflowScrolling: "touch",
         }}
       >
         <div style={{ position: "relative" }}>
           <motion.button
             className="mobile-signout"
-            onClick={async () => { clearAuthKey(); await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }); window.location.href = "/login"; }}
+            onClick={async () => {
+              clearAuthKey();
+              await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
+              window.location.href = "/login";
+            }}
             whileTap={{ scale: 0.93 }}
             aria-label="Sign out"
             style={{
@@ -323,11 +403,20 @@ export default function Layout() {
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
             </svg>
           </motion.button>
+
+          {/* Page transition — animate in on every route change */}
           <motion.div
             key={location.pathname}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.12 }}
+            initial={{ opacity: 0, y: shouldReduce ? 0 : 10, filter: shouldReduce ? "none" : "blur(4px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: shouldReduce ? 0 : -6, filter: shouldReduce ? "none" : "blur(2px)" }}
+            transition={{
+              type: "spring",
+              bounce: 0,
+              duration: shouldReduce ? 0 : 0.4,
+              layout: { type: "spring", bounce: 0, duration: shouldReduce ? 0 : 0.35 },
+            }}
+            layout
           >
             <Outlet />
           </motion.div>
