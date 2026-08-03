@@ -39,9 +39,9 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.18.8",
+    "@cloudflare/vitest-pool-workers": "^0.20.1",
     "@cloudflare/workers-types": "^5.20260727.1",
-    "@playwright/test": "^1.62.0",
+    "@playwright/test": "^1.62.1",
     "drizzle-kit": "^0.31.10",
     "prettier": "^3.9.5",
     "typescript": "^7.0.2",
