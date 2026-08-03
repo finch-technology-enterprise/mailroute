@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useId, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion, useReducedMotion } from "motion/react";
 import { login } from "../api/auth";
@@ -11,6 +11,9 @@ export default function Login() {
   const [focused, setFocused] = useState<string | null>(null);
   const navigate = useNavigate();
   const shouldReduce = useReducedMotion();
+  const emailId = useId();
+  const passwordId = useId();
+  const errorId = useId();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +34,11 @@ export default function Login() {
   };
 
   // Form field animation config
-  const springConfig = { type: "spring", bounce: 0, duration: shouldReduce ? 0 : 0.35 };
+  const springConfig = {
+    type: "spring",
+    bounce: 0,
+    duration: shouldReduce ? 0 : 0.35,
+  };
 
   return (
     <motion.div
@@ -43,12 +50,25 @@ export default function Login() {
     >
       {/* Logo + branding — scale-in with subtle overshoot */}
       <motion.div
-        initial={{ opacity: 0, y: -16, scale: 0.96 }}
+        initial={
+          shouldReduce ? { opacity: 0 } : { opacity: 0, y: -16, scale: 0.96 }
+        }
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ type: "spring", bounce: 0.15, duration: 0.45 }}
+        transition={{
+          type: "spring",
+          bounce: 0.15,
+          duration: shouldReduce ? 0 : 0.45,
+        }}
         style={{ textAlign: "center", marginBottom: 32 }}
       >
-        <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: "-0.02em", marginBottom: 4 }}>
+        <h1
+          style={{
+            fontSize: 28,
+            fontWeight: 700,
+            letterSpacing: "-0.02em",
+            marginBottom: 4,
+          }}
+        >
           mailroute
         </h1>
         <p style={{ fontSize: 14, color: "var(--text-secondary)", margin: 0 }}>
@@ -59,9 +79,14 @@ export default function Login() {
       <form onSubmit={handleSubmit}>
         {/* Form container — glass surface */}
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
+          initial={shouldReduce ? { opacity: 0 } : { opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ type: "spring", bounce: 0, duration: 0.4, delay: 0.05 }}
+          transition={{
+            type: "spring",
+            bounce: 0,
+            duration: shouldReduce ? 0 : 0.4,
+            delay: shouldReduce ? 0 : 0.05,
+          }}
           style={{
             background: "var(--bg-secondary)",
             borderRadius: 12,
@@ -73,18 +98,22 @@ export default function Login() {
           {/* Email field */}
           <motion.div
             animate={{
-              background: focused === "email" ? "rgba(0,113,227,0.04)" : "transparent",
+              background:
+                focused === "email" ? "rgba(0,113,227,0.04)" : "transparent",
             }}
-            transition={{ duration: 0.15 }}
+            transition={{ duration: shouldReduce ? 0 : 0.15 }}
             style={{ padding: "12px 14px 0" }}
           >
             <label
-              htmlFor="email"
+              htmlFor={emailId}
               style={{
                 fontSize: 13,
                 fontWeight: 500,
-                color: focused === "email" ? "var(--accent)" : "var(--text-secondary)",
-                transition: "color 0.15s ease",
+                color:
+                  focused === "email"
+                    ? "var(--accent)"
+                    : "var(--text-secondary)",
+                transition: shouldReduce ? "none" : "color 0.15s ease",
                 display: "block",
               }}
             >
@@ -92,7 +121,7 @@ export default function Login() {
             </label>
           </motion.div>
           <input
-            id="email"
+            id={emailId}
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -100,7 +129,7 @@ export default function Login() {
             onBlur={() => setFocused(null)}
             required
             autoComplete="email"
-            aria-describedby={error ? "login-error" : undefined}
+            aria-describedby={error ? errorId : undefined}
             style={{
               width: "100%",
               border: "none",
@@ -110,29 +139,39 @@ export default function Login() {
               outline: "none",
               color: "var(--text-primary)",
               fontFamily: "var(--font-sans)",
-              transition: "color 0.15s ease",
+              transition: shouldReduce ? "none" : "color 0.15s ease",
             }}
           />
           <motion.div
             animate={{ height: 1, opacity: 1 }}
-            style={{ height: 1, background: focused === "email" ? "var(--accent)" : "var(--border)", transition: "background 0.15s ease", margin: "0 14px" }}
+            style={{
+              height: 1,
+              background:
+                focused === "email" ? "var(--accent)" : "var(--border)",
+              transition: shouldReduce ? "none" : "background 0.15s ease",
+              margin: "0 14px",
+            }}
           />
 
           {/* Password field */}
           <motion.div
             animate={{
-              background: focused === "password" ? "rgba(0,113,227,0.04)" : "transparent",
+              background:
+                focused === "password" ? "rgba(0,113,227,0.04)" : "transparent",
             }}
-            transition={{ duration: 0.15 }}
+            transition={{ duration: shouldReduce ? 0 : 0.15 }}
             style={{ padding: "12px 14px 0" }}
           >
             <label
-              htmlFor="password"
+              htmlFor={passwordId}
               style={{
                 fontSize: 13,
                 fontWeight: 500,
-                color: focused === "password" ? "var(--accent)" : "var(--text-secondary)",
-                transition: "color 0.15s ease",
+                color:
+                  focused === "password"
+                    ? "var(--accent)"
+                    : "var(--text-secondary)",
+                transition: shouldReduce ? "none" : "color 0.15s ease",
                 display: "block",
               }}
             >
@@ -140,7 +179,7 @@ export default function Login() {
             </label>
           </motion.div>
           <input
-            id="password"
+            id={passwordId}
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -164,12 +203,18 @@ export default function Login() {
         {/* Error message — shake if present */}
         {error && (
           <motion.div
-            id="login-error"
+            id={errorId}
             role="alert"
-            initial={{ opacity: 0, y: -8, scale: 0.97 }}
+            initial={
+              shouldReduce ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.97 }
+            }
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ type: "spring", bounce: 0.2, duration: 0.35 }}
+            transition={{
+              type: "spring",
+              bounce: 0.2,
+              duration: shouldReduce ? 0 : 0.35,
+            }}
             style={{
               padding: "10px 14px",
               borderRadius: 10,
@@ -187,8 +232,12 @@ export default function Login() {
         <motion.button
           type="submit"
           disabled={loading}
-          whileTap={loading ? {} : { scale: 0.97 }}
-          transition={{ type: "spring", bounce: 0, duration: 0.15 }}
+          whileTap={loading || shouldReduce ? {} : { scale: 0.97 }}
+          transition={{
+            type: "spring",
+            bounce: 0,
+            duration: shouldReduce ? 0 : 0.15,
+          }}
           style={{
             width: "100%",
             padding: "14px 20px",
@@ -200,7 +249,9 @@ export default function Login() {
             fontWeight: 600,
             cursor: loading ? "not-allowed" : "pointer",
             marginBottom: 12,
-            transition: "background 0.15s ease, opacity 0.15s ease",
+            transition: shouldReduce
+              ? "none"
+              : "background 0.15s ease, opacity 0.15s ease",
           }}
         >
           {loading ? "Signing in…" : "Sign In"}
@@ -213,16 +264,24 @@ export default function Login() {
               color: "var(--text-secondary)",
               textDecoration: "none",
               fontSize: 13,
-              transition: "color 0.15s ease",
+              transition: shouldReduce ? "none" : "color 0.15s ease",
             }}
             onMouseOver={(e) => (e.currentTarget.style.color = "var(--accent)")}
-            onMouseOut={(e) => (e.currentTarget.style.color = "var(--text-secondary)")}
+            onMouseOut={(e) =>
+              (e.currentTarget.style.color = "var(--text-secondary)")
+            }
           >
             Forgot password?
           </Link>
         </div>
 
-        <p style={{ textAlign: "center", fontSize: 13, color: "var(--text-secondary)" }}>
+        <p
+          style={{
+            textAlign: "center",
+            fontSize: 13,
+            color: "var(--text-secondary)",
+          }}
+        >
           No account?{" "}
           <Link
             to="/signup"
@@ -230,7 +289,7 @@ export default function Login() {
               color: "var(--accent)",
               textDecoration: "none",
               fontWeight: 500,
-              transition: "opacity 0.15s ease",
+              transition: shouldReduce ? "none" : "opacity 0.15s ease",
             }}
             onMouseOver={(e) => (e.currentTarget.style.opacity = "0.8")}
             onMouseOut={(e) => (e.currentTarget.style.opacity = "1")}

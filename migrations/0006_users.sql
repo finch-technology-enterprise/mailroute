@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT NOT NULL,
   name TEXT NOT NULL DEFAULT '',
   role TEXT NOT NULL DEFAULT 'admin' CHECK(role IN ('admin', 'member')),
+  email_verified INTEGER NOT NULL DEFAULT 0,
+  verification_token TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(tenant_id, email)

@@ -1,4 +1,4 @@
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 
 interface EmptyStateProps {
   title: string;
@@ -28,18 +28,25 @@ const itemVariants = {
   },
 };
 
-export default function EmptyState({ title, description, actionLabel, onAction }: EmptyStateProps) {
+export default function EmptyState({
+  title,
+  description,
+  actionLabel,
+  onAction,
+}: EmptyStateProps) {
+  const shouldReduce = useReducedMotion();
+
   return (
     <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
+      variants={shouldReduce ? undefined : containerVariants}
+      initial={shouldReduce ? false : "hidden"}
+      animate={shouldReduce ? undefined : "visible"}
       className="flex flex-col items-center justify-center px-8 py-20 text-center"
       style={{ minHeight: 300 }}
     >
       {/* Icon container — gentle scale-in with overshoot */}
       <motion.div
-        variants={itemVariants}
+        variants={shouldReduce ? undefined : itemVariants}
         style={{
           width: 64,
           height: 64,
@@ -55,32 +62,63 @@ export default function EmptyState({ title, description, actionLabel, onAction }
           color: "var(--text-tertiary)",
           boxShadow: "var(--shadow-sm)",
         }}
-        whileHover={{ scale: 1.05 }}
-        transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
+        whileHover={{ scale: shouldReduce ? 1 : 1.05 }}
+        transition={{
+          type: "spring",
+          bounce: 0.2,
+          duration: shouldReduce ? 0 : 0.4,
+        }}
       >
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+        <svg
+          width="26"
+          height="26"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
         </svg>
       </motion.div>
 
       {/* Title */}
-      <motion.h3 variants={itemVariants} className="mb-2" style={{ fontSize: 18, fontWeight: 600, letterSpacing: "-0.02em" }}>
+      <motion.h3
+        variants={shouldReduce ? undefined : itemVariants}
+        className="mb-2"
+        style={{ fontSize: 18, fontWeight: 600, letterSpacing: "-0.02em" }}
+      >
         {title}
       </motion.h3>
 
       {/* Description */}
-      <motion.p variants={itemVariants} className="mb-8" style={{ color: "var(--text-secondary)", fontSize: 14, lineHeight: 1.55, maxWidth: 320 }}>
+      <motion.p
+        variants={shouldReduce ? undefined : itemVariants}
+        className="mb-8"
+        style={{
+          color: "var(--text-secondary)",
+          fontSize: 14,
+          lineHeight: 1.55,
+          maxWidth: 320,
+        }}
+      >
         {description}
       </motion.p>
 
       {/* Action button */}
       {actionLabel && onAction && (
         <motion.button
-          variants={itemVariants}
+          variants={shouldReduce ? undefined : itemVariants}
           className="apple-btn apple-btn-primary"
           onClick={onAction}
-          whileTap={{ scale: 0.97 }}
-          transition={{ type: "spring", bounce: 0, duration: 0.15 }}
+          whileTap={{ scale: shouldReduce ? 1 : 0.97 }}
+          transition={{
+            type: "spring",
+            bounce: 0,
+            duration: shouldReduce ? 0 : 0.15,
+          }}
         >
           {actionLabel}
         </motion.button>
