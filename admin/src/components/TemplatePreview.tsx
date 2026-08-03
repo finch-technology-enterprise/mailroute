@@ -97,7 +97,7 @@ export default function TemplatePreview({
                 className="apple-btn apple-btn-secondary"
                 onClick={resetReplacements}
                 whileTap={{ scale: shouldReduce ? 1 : 0.97 }}
-                style={{ fontSize: 12, padding: "6px 12px", minHeight: 32 }}
+                style={{ fontSize: 12, padding: "8px 12px", minHeight: 44 }}
               >
                 Reset
               </motion.button>
@@ -105,7 +105,7 @@ export default function TemplatePreview({
                 className="apple-btn apple-btn-secondary"
                 onClick={onClose}
                 whileTap={{ scale: shouldReduce ? 1 : 0.97 }}
-                style={{ fontSize: 12, padding: "6px 12px", minHeight: 32 }}
+                style={{ fontSize: 12, padding: "8px 12px", minHeight: 44 }}
               >
                 Close
               </motion.button>
@@ -157,8 +157,8 @@ export default function TemplatePreview({
                     style={{
                       width: 120,
                       fontSize: 12,
-                      padding: "4px 8px",
-                      minHeight: 28,
+                      padding: "8px",
+                      minHeight: 44,
                     }}
                   />
                 </div>

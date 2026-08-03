@@ -46,7 +46,7 @@ const focusableSelector = [
   "input:not([disabled]):not([type='hidden'])",
   "select:not([disabled])",
   "textarea:not([disabled])",
-  "iframe",
+  "iframe:not([tabindex='-1'])",
   "[tabindex]:not([tabindex='-1'])",
 ].join(",");
 
@@ -172,7 +172,9 @@ export default function Modal({
         ...surfaceRef.current.querySelectorAll<HTMLElement>(focusableSelector),
       ].filter(
         (element) =>
-          !element.hidden && element.getAttribute("aria-hidden") !== "true",
+          !element.hidden &&
+          element.getAttribute("aria-hidden") !== "true" &&
+          element.getClientRects().length > 0,
       );
       if (focusable.length === 0) {
         event.preventDefault();
@@ -221,13 +223,20 @@ export default function Modal({
               return;
             }
 
-            const fallback =
-              modalStack
-                .at(-1)
-                ?.layer?.querySelector<HTMLElement>(focusableSelector) ??
-              document
-                .getElementById("root")
-                ?.querySelector<HTMLElement>(focusableSelector);
+            const fallbackRoot =
+              modalStack.at(-1)?.layer ?? document.getElementById("root");
+            const fallback = fallbackRoot
+              ? [
+                  ...fallbackRoot.querySelectorAll<HTMLElement>(
+                    focusableSelector,
+                  ),
+                ].find(
+                  (element) =>
+                    !element.hidden &&
+                    element.getAttribute("aria-hidden") !== "true" &&
+                    element.getClientRects().length > 0,
+                )
+              : undefined;
             fallback?.focus({ preventScroll: true });
           });
         }

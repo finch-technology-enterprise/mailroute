@@ -188,8 +188,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                     aria-label={`Dismiss ${t.type} notification`}
                     whileTap={{ scale: shouldReduce ? 1 : 0.9 }}
                     style={{
-                      width: 28,
-                      height: 28,
+                      width: 44,
+                      height: 44,
                       border: "none",
                       borderRadius: 8,
                       background: "transparent",

@@ -386,7 +386,7 @@ export default function ApiKeys() {
               width: "100%",
               fontSize: 14,
               padding: "8px 12px",
-              minHeight: 36,
+              minHeight: 44,
               fontFamily: "var(--font-sans)",
             }}
             placeholder="e.g. Production"
@@ -394,7 +394,9 @@ export default function ApiKeys() {
             onChange={(e) => setNewKeyName(e.target.value)}
             autoFocus
             onKeyDown={(e) => {
-              if (e.key === "Enter") handleCreate();
+              if (e.key === "Enter" && !creating && newKeyName.trim()) {
+                handleCreate();
+              }
             }}
           />
         </div>
@@ -468,7 +470,9 @@ export default function ApiKeys() {
               border: "none",
               cursor: "pointer",
               color: copied ? "var(--green)" : "var(--text-tertiary)",
-              padding: 4,
+              width: 44,
+              height: 44,
+              padding: 0,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -538,7 +542,7 @@ export default function ApiKeys() {
               width: "100%",
               fontSize: 14,
               padding: "8px 12px",
-              minHeight: 36,
+              minHeight: 44,
               fontFamily: "var(--font-mono, monospace)",
             }}
             placeholder="mr_..."
