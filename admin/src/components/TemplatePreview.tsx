@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { useId, useMemo, useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
 import type { Template } from "../types";
+import Modal from "./Modal";
 
 const sampleReplacements: Record<string, string> = {
   header: "Your Account Has Been Updated",
@@ -18,8 +19,15 @@ interface TemplatePreviewProps {
   onClose: () => void;
 }
 
-export default function TemplatePreview({ open, template, onClose }: TemplatePreviewProps) {
-  const [replacements, setReplacements] = useState<Record<string, string>>(sampleReplacements);
+export default function TemplatePreview({
+  open,
+  template,
+  onClose,
+}: TemplatePreviewProps) {
+  const [replacements, setReplacements] =
+    useState<Record<string, string>>(sampleReplacements);
+  const shouldReduce = useReducedMotion();
+  const titleId = useId();
 
   const placeholders = useMemo(() => {
     if (!template) return [];
@@ -53,107 +61,135 @@ export default function TemplatePreview({ open, template, onClose }: TemplatePre
   const resetReplacements = () => setReplacements(sampleReplacements);
 
   return (
-    <AnimatePresence>
-      {open && template && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.15 }}
-          className="modal-overlay"
-          onClick={onClose}
-        >
-          <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            transition={{ type: "spring", bounce: 0, duration: 0.4 }}
-            className="modal-surface"
-            style={{ width: "100%", maxWidth: 720, display: "flex", flexDirection: "column" }}
-            onClick={(e) => e.stopPropagation()}
+    <Modal
+      open={open && !!template}
+      onClose={onClose}
+      ariaLabelledBy={titleId}
+      maxWidth={720}
+      surfaceStyle={{ display: "flex", flexDirection: "column" }}
+    >
+      {template && (
+        <>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 16,
+            }}
           >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-              <div>
-                <h2 style={{ margin: 0 }}>{template.slug}</h2>
-                <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--text-secondary)" }}>
-                  {renderedSubject}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <motion.button
-                  className="apple-btn apple-btn-secondary"
-                  onClick={resetReplacements}
-                  whileTap={{ scale: 0.97 }}
-                  style={{ fontSize: 12, padding: "6px 12px", minHeight: 32 }}
-                >
-                  Reset
-                </motion.button>
-                <motion.button
-                  className="apple-btn apple-btn-secondary"
-                  onClick={onClose}
-                  whileTap={{ scale: 0.97 }}
-                  style={{ fontSize: 12, padding: "6px 12px", minHeight: 32 }}
-                >
-                  Close
-                </motion.button>
-              </div>
-            </div>
-
-            {placeholders.length > 0 && (
-              <div
+            <div>
+              <h2 id={titleId} style={{ margin: 0 }}>
+                {template.slug}
+              </h2>
+              <p
                 style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: 8,
-                  padding: "12px 16px",
-                  background: "var(--bg-secondary)",
-                  borderRadius: 10,
-                  marginBottom: 16,
+                  margin: "4px 0 0",
+                  fontSize: 13,
+                  color: "var(--text-secondary)",
                 }}
               >
-                <span style={{ fontSize: 12, color: "var(--text-secondary)", width: "100%", marginBottom: 2 }}>
-                  Placeholder values
-                </span>
-                {placeholders.map((key) => (
-                  <div key={key} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <code style={{ fontSize: 11, color: "var(--text-secondary)" }}>{`{{${key}}}`}</code>
-                    <input
-                      className="apple-input code"
-                      value={replacements[key] || ""}
-                      onChange={(e) =>
-                        setReplacements((prev) => ({ ...prev, [key]: e.target.value }))
-                      }
-                      style={{ width: 120, fontSize: 12, padding: "4px 8px", minHeight: 28 }}
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
+                {renderedSubject}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <motion.button
+                className="apple-btn apple-btn-secondary"
+                onClick={resetReplacements}
+                whileTap={{ scale: shouldReduce ? 1 : 0.97 }}
+                style={{ fontSize: 12, padding: "8px 12px", minHeight: 44 }}
+              >
+                Reset
+              </motion.button>
+              <motion.button
+                className="apple-btn apple-btn-secondary"
+                onClick={onClose}
+                whileTap={{ scale: shouldReduce ? 1 : 0.97 }}
+                style={{ fontSize: 12, padding: "8px 12px", minHeight: 44 }}
+              >
+                Close
+              </motion.button>
+            </div>
+          </div>
 
+          {placeholders.length > 0 && (
             <div
               style={{
-                border: "1px solid var(--border)",
-                borderRadius: 12,
-                overflow: "hidden",
-                background: "#fff",
-                minHeight: 300,
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 8,
+                padding: "12px 16px",
+                background: "var(--bg-secondary)",
+                borderRadius: 10,
+                marginBottom: 16,
               }}
             >
-              <iframe
-                srcDoc={renderedHtml}
-                title="Template preview"
-                sandbox=""
+              <span
                 style={{
+                  fontSize: 12,
+                  color: "var(--text-secondary)",
                   width: "100%",
-                  height: 400,
-                  border: "none",
-                  display: "block",
+                  marginBottom: 2,
                 }}
-              />
+              >
+                Placeholder values
+              </span>
+              {placeholders.map((key) => (
+                <div
+                  key={key}
+                  style={{ display: "flex", alignItems: "center", gap: 4 }}
+                >
+                  <label
+                    htmlFor={`${titleId}-${key}`}
+                    className="code"
+                    style={{ fontSize: 11, color: "var(--text-secondary)" }}
+                  >{`{{${key}}}`}</label>
+                  <input
+                    id={`${titleId}-${key}`}
+                    className="apple-input code"
+                    value={replacements[key] || ""}
+                    onChange={(e) =>
+                      setReplacements((prev) => ({
+                        ...prev,
+                        [key]: e.target.value,
+                      }))
+                    }
+                    style={{
+                      width: 120,
+                      fontSize: 12,
+                      padding: "8px",
+                      minHeight: 44,
+                    }}
+                  />
+                </div>
+              ))}
             </div>
-          </motion.div>
-        </motion.div>
+          )}
+
+          <div
+            style={{
+              border: "1px solid var(--border)",
+              borderRadius: 12,
+              overflow: "hidden",
+              background: "#fff",
+              minHeight: 300,
+            }}
+          >
+            <iframe
+              srcDoc={renderedHtml}
+              title="Template preview"
+              sandbox=""
+              tabIndex={-1}
+              style={{
+                width: "100%",
+                height: 400,
+                border: "none",
+                display: "block",
+              }}
+            />
+          </div>
+        </>
       )}
-    </AnimatePresence>
+    </Modal>
   );
 }

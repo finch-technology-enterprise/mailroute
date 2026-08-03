@@ -32,7 +32,8 @@ export async function scheduled(
 
     if (vendors.length === 0) {
       ctx.waitUntil(
-        db.update(ScheduledEmail)
+        db
+          .update(ScheduledEmail)
           .set({ status: "failed", error: "No active vendors", updatedAt: now })
           .where(eq(ScheduledEmail.id, item.id))
           .execute(),
@@ -45,8 +46,13 @@ export async function scheduled(
 
     if (!adapter) {
       ctx.waitUntil(
-        db.update(ScheduledEmail)
-          .set({ status: "failed", error: `Unknown adapter: ${vendor.name}`, updatedAt: now })
+        db
+          .update(ScheduledEmail)
+          .set({
+            status: "failed",
+            error: `Unknown adapter: ${vendor.name}`,
+            updatedAt: now,
+          })
           .where(eq(ScheduledEmail.id, item.id))
           .execute(),
       );
@@ -54,7 +60,7 @@ export async function scheduled(
     }
 
     const send = async () => {
-      await adapter.send({
+      const sendResult = await adapter.send({
         endpoint: vendor.apiEndpoint,
         token: vendor.apiToken,
         from: { email: vendor.fromEmail, name: vendor.fromName },
@@ -67,8 +73,15 @@ export async function scheduled(
         config: parseConfig(vendor.config),
       });
 
-      await db.update(ScheduledEmail)
-        .set({ status: "sent", updatedAt: new Date().toISOString() })
+      await db
+        .update(ScheduledEmail)
+        .set({
+          status: "sent",
+          ...(sendResult.providerMessageId.trim()
+            ? { providerMessageId: sendResult.providerMessageId }
+            : {}),
+          updatedAt: new Date().toISOString(),
+        })
         .where(eq(ScheduledEmail.id, item.id))
         .execute();
     };
@@ -76,8 +89,13 @@ export async function scheduled(
     ctx.waitUntil(
       send().catch(async (error) => {
         const message = error instanceof Error ? error.message : String(error);
-        await db.update(ScheduledEmail)
-          .set({ status: "failed", error: message, updatedAt: new Date().toISOString() })
+        await db
+          .update(ScheduledEmail)
+          .set({
+            status: "failed",
+            error: message,
+            updatedAt: new Date().toISOString(),
+          })
           .where(eq(ScheduledEmail.id, item.id))
           .execute();
       }),

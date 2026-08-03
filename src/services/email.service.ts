@@ -7,6 +7,7 @@ import { EmailVendorService } from "./email-vendor.service";
 import { SendLog } from "../db/schema";
 import { ADAPTERS } from "../vendors";
 import { sendPushNotification } from "./push.service";
+import type { SendResult } from "../vendors/types";
 
 const VENDOR_TIMEOUT_MS = 10_000;
 const CIRCUIT_BREAKER_THRESHOLD = 5;
@@ -15,7 +16,10 @@ const MAX_RETRIES = 3;
 const RETRY_BASE_DELAY_MS = 1_000;
 
 function redactError(msg: string): string {
-  return msg.replace(/(token|key|secret|auth|password|api[_-]?key)[=:]\s*\S+/gi, "$1=[REDACTED]");
+  return msg.replace(
+    /(token|key|secret|auth|password|api[_-]?key)[=:]\s*\S+/gi,
+    "$1=[REDACTED]",
+  );
 }
 
 export interface EmailPayload {
@@ -24,15 +28,22 @@ export interface EmailPayload {
   content: string;
   cc?: string;
   bcc?: string;
-  attachments?: Array<{ filename: string; content: string; contentType?: string }>;
+  attachments?: Array<{
+    filename: string;
+    content: string;
+    contentType?: string;
+  }>;
   track?: boolean;
 }
 
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+function withTimeout<T>(
+  operation: (signal: AbortSignal) => Promise<T>,
+  ms: number,
+): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), ms);
   return Promise.race([
-    promise,
+    operation(controller.signal),
     new Promise<T>((_, reject) => {
       controller.signal.addEventListener("abort", () => {
         reject(new Error(`Vendor timeout after ${ms}ms`));
@@ -56,8 +67,12 @@ export class EmailService {
     this.tenantId = tenantId;
   }
 
-  private async getVendorsInCooldown(vendorIds: string[]): Promise<Set<string>> {
-    const cutoff = new Date(Date.now() - CIRCUIT_BREAKER_WINDOW_MS).toISOString();
+  private async getVendorsInCooldown(
+    vendorIds: string[],
+  ): Promise<Set<string>> {
+    const cutoff = new Date(
+      Date.now() - CIRCUIT_BREAKER_WINDOW_MS,
+    ).toISOString();
     const db = drizzle(this.env.D1_DATABASE);
     const failed = await db
       .select({ vendorId: SendLog.vendorId })
@@ -74,7 +89,11 @@ export class EmailService {
     for (const row of failed) {
       counts.set(row.vendorId, (counts.get(row.vendorId) || 0) + 1);
     }
-    return new Set(vendorIds.filter((id) => (counts.get(id) || 0) >= CIRCUIT_BREAKER_THRESHOLD));
+    return new Set(
+      vendorIds.filter(
+        (id) => (counts.get(id) || 0) >= CIRCUIT_BREAKER_THRESHOLD,
+      ),
+    );
   }
 
   private async recordSendLog(
@@ -84,10 +103,12 @@ export class EmailService {
     status: "sent" | "failed",
     durationMs: number,
     error?: string,
+    providerMessageId?: string,
   ) {
     const db = drizzle(c.env.D1_DATABASE);
-    c.executionCtx.waitUntil(
-      db.insert(SendLog).values({
+    const insertPromise = db
+      .insert(SendLog)
+      .values({
         id: crypto.randomUUID(),
         tenantId: this.tenantId,
         vendorId: vendor.id,
@@ -97,18 +118,37 @@ export class EmailService {
         status,
         error: error ? redactError(error) : null,
         durationMs,
+        ...(providerMessageId?.trim() ? { providerMessageId } : {}),
         createdAt: new Date().toISOString(),
-      }).execute().catch(() => {}),
-    );
-    const pushPayload = status === "sent"
-      ? { title: "Email sent", body: `"${payload.subject}" → ${payload.to} via ${vendor.name}`, tag: "email-sent" }
-      : { title: "Email failed", body: `${vendor.name}: ${(error || "").slice(0, 200)}`, tag: "email-failed" };
+      })
+      .execute()
+      .catch(() => {});
+    c.executionCtx.waitUntil(insertPromise);
+    await insertPromise;
+    const pushPayload =
+      status === "sent"
+        ? {
+            title: "Email sent",
+            body: `"${payload.subject}" → ${payload.to} via ${vendor.name}`,
+            tag: "email-sent",
+          }
+        : {
+            title: "Email failed",
+            body: `${vendor.name}: ${(error || "").slice(0, 200)}`,
+            tag: "email-failed",
+          };
     c.executionCtx.waitUntil(
-      sendPushNotification(c.env, pushPayload).catch((e) => { console.error("Push notification failed:", e); }),
+      sendPushNotification(c.env, pushPayload).catch((e) => {
+        console.error("Push notification failed:", e);
+      }),
     );
   }
 
-  private applyTracking(content: string, sendId: string, baseUrl: string): string {
+  private applyTracking(
+    content: string,
+    sendId: string,
+    baseUrl: string,
+  ): string {
     const pixelUrl = `${baseUrl}/api/track/open/${sendId}`;
     const clickBaseUrl = `${baseUrl}/api/track/click/${sendId}`;
 
@@ -125,13 +165,17 @@ export class EmailService {
     payload: EmailPayload,
     vendorName?: string,
     sendId?: string,
-  ) {
+  ): Promise<SendResult> {
     LogToNewRelic(c, "sendEmail", payload);
 
     if (payload.track && sendId) {
       const appUrl = this.env.APP_URL;
       if (appUrl) {
-        payload.content = this.applyTracking(payload.content, sendId, appUrl.replace(/\/+$/, ""));
+        payload.content = this.applyTracking(
+          payload.content,
+          sendId,
+          appUrl.replace(/\/+$/, ""),
+        );
       }
     }
 
@@ -143,7 +187,9 @@ export class EmailService {
       throw new Error("No email vendors configured");
     }
 
-    const inCooldownIds = await this.getVendorsInCooldown(vendors.map((v) => v.id));
+    const inCooldownIds = await this.getVendorsInCooldown(
+      vendors.map((v) => v.id),
+    );
     const errors: string[] = [];
     for (const vendor of vendors) {
       const adapter = ADAPTERS[vendor.name];
@@ -162,35 +208,44 @@ export class EmailService {
         continue;
       }
 
-      const attemptSend = async (): Promise<void> => {
-        await withTimeout(
-          adapter.send({
-            endpoint: vendor.apiEndpoint,
-            token: vendor.apiToken,
-            from: { email: vendor.fromEmail, name: vendor.fromName },
-            to: payload.to,
-            subject: payload.subject,
-            html: payload.content,
-            cc: payload.cc,
-            bcc: payload.bcc,
-            attachments: payload.attachments,
-            config: parseConfig(vendor.config),
-          }),
+      const attemptSend = (): Promise<SendResult> =>
+        withTimeout(
+          (signal) =>
+            adapter.send({
+              endpoint: vendor.apiEndpoint,
+              token: vendor.apiToken,
+              from: { email: vendor.fromEmail, name: vendor.fromName },
+              to: payload.to,
+              subject: payload.subject,
+              html: payload.content,
+              cc: payload.cc,
+              bcc: payload.bcc,
+              attachments: payload.attachments,
+              config: parseConfig(vendor.config),
+              signal,
+            }),
           VENDOR_TIMEOUT_MS,
         );
-      };
 
       const startTime = Date.now();
 
       try {
-        await attemptSend();
+        const sendResult = await attemptSend();
         const durationMs = Date.now() - startTime;
         LogToNewRelic(c, "sendEmail:success", {
           vendor: vendor.name,
           "context.to": payload.to,
         });
-        await this.recordSendLog(c, vendor, payload, "sent", durationMs);
-        return;
+        await this.recordSendLog(
+          c,
+          vendor,
+          payload,
+          "sent",
+          durationMs,
+          undefined,
+          sendResult.providerMessageId,
+        );
+        return sendResult;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         const durationMs = Date.now() - startTime;
@@ -202,30 +257,45 @@ export class EmailService {
           "context.error": message,
         });
 
-        await this.recordSendLog(c, vendor, payload, "failed", durationMs, message);
+        await this.recordSendLog(
+          c,
+          vendor,
+          payload,
+          "failed",
+          durationMs,
+          message,
+        );
 
         if (isTransientError(error)) {
-          let retrySuccess = false;
           for (let retry = 1; retry <= MAX_RETRIES; retry++) {
             const delay = RETRY_BASE_DELAY_MS * Math.pow(2, retry - 1);
             try {
               await sleep(delay);
-              await attemptSend();
+              const sendResult = await attemptSend();
               const retryDurationMs = Date.now() - startTime - delay;
               LogToNewRelic(c, "sendEmail:retry-success", {
                 vendor: vendor.name,
                 "context.to": payload.to,
                 "context.retry": retry,
               });
-              await this.recordSendLog(c, vendor, payload, "sent", retryDurationMs);
-              retrySuccess = true;
-              break;
+              await this.recordSendLog(
+                c,
+                vendor,
+                payload,
+                "sent",
+                retryDurationMs,
+                undefined,
+                sendResult.providerMessageId,
+              );
+              return sendResult;
             } catch (retryError) {
               const retryMessage =
                 retryError instanceof Error
                   ? retryError.message
                   : String(retryError);
-              errors.push(`${vendor.name}: retry ${retry}/${MAX_RETRIES} failed (${retryMessage})`);
+              errors.push(
+                `${vendor.name}: retry ${retry}/${MAX_RETRIES} failed (${retryMessage})`,
+              );
               LogToNewRelic(c, "sendEmail:retry-failed", {
                 level: "WARN",
                 vendor: vendor.name,
@@ -234,7 +304,6 @@ export class EmailService {
               });
             }
           }
-          if (retrySuccess) return;
         }
       }
     }
@@ -251,7 +320,7 @@ function isTransientError(error: unknown): boolean {
     msg.includes("econnrefused") ||
     msg.includes("econnreset") ||
     msg.includes("etimedout") ||
-    /\b5\d{2}\b/.test(msg) ||  // only match HTTP 5xx status codes
+    /\b5\d{2}\b/.test(msg) || // only match HTTP 5xx status codes
     msg.includes("too many requests") ||
     msg.includes("rate limit") ||
     msg.includes("unavailable") ||

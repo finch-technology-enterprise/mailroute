@@ -1,8 +1,27 @@
 import { EmailVendorAdapter, SendArgs, SendResult } from "./types";
 
+function getProviderMessageId(data: unknown): string {
+  if (typeof data !== "object" || data === null || Array.isArray(data))
+    return "";
+
+  const record = data as Record<string, unknown>;
+  for (const key of ["emailId", "id", "messageId", "message_id"]) {
+    if (typeof record[key] === "string") return record[key];
+  }
+  return "";
+}
+
 export const senderAdapter: EmailVendorAdapter = {
   name: "sender",
-  async send({ endpoint, token, from, to, subject, html, signal }: SendArgs): Promise<SendResult> {
+  async send({
+    endpoint,
+    token,
+    from,
+    to,
+    subject,
+    html,
+    signal,
+  }: SendArgs): Promise<SendResult> {
     const response = await fetch(endpoint, {
       method: "POST",
       headers: {
@@ -23,18 +42,13 @@ export const senderAdapter: EmailVendorAdapter = {
       throw new Error(`Sender.net API error: ${await response.text()}`);
     }
 
-    // Try to extract provider message ID from response
     let providerMessageId = "";
     try {
-      const data = await response.json();
-      providerMessageId = data.id || data.messageId || data.message_id || "";
+      providerMessageId = getProviderMessageId(await response.json());
     } catch {
-      // Response may not be JSON or may not have an ID - that's okay
+      // A successful response may have no JSON body.
     }
 
-    return {
-      providerMessageId,
-      metadata: {},
-    };
+    return { providerMessageId, metadata: {} };
   },
 };

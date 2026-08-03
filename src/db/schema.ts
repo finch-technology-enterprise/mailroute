@@ -3,6 +3,7 @@ import {
   text,
   integer,
   primaryKey,
+  uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
 // --- Multi-tenant tables ---
@@ -18,12 +19,16 @@ export const Tenant = sqliteTable("tenants", {
 
 export const User = sqliteTable("users", {
   id: text("id").primaryKey(),
-  tenantId: text("tenant_id").notNull().references(() => Tenant.id),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => Tenant.id),
   email: text("email").notNull(),
   passwordHash: text("password_hash").notNull(),
   name: text("name").notNull().default(""),
   role: text("role").notNull().default("admin"),
-  emailVerified: integer("email_verified", { mode: "boolean" }).notNull().default(false),
+  emailVerified: integer("email_verified", { mode: "boolean" })
+    .notNull()
+    .default(false),
   verificationToken: text("verification_token"),
   createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
   updatedAt: text("updated_at").$defaultFn(() => new Date().toISOString()),
@@ -31,7 +36,9 @@ export const User = sqliteTable("users", {
 
 export const Session = sqliteTable("sessions", {
   id: text("id").primaryKey(),
-  userId: text("user_id").notNull().references(() => User.id),
+  userId: text("user_id")
+    .notNull()
+    .references(() => User.id),
   tokenHash: text("token_hash").notNull(),
   expiresAt: text("expires_at").notNull(),
   createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
@@ -39,7 +46,9 @@ export const Session = sqliteTable("sessions", {
 
 export const ApiKey = sqliteTable("api_keys", {
   id: text("id").primaryKey(),
-  tenantId: text("tenant_id").notNull().references(() => Tenant.id),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => Tenant.id),
   name: text("name").notNull().default(""),
   keyHash: text("key_hash").notNull(),
   keyPrefix: text("key_prefix").notNull(),
@@ -51,31 +60,46 @@ export const ApiKey = sqliteTable("api_keys", {
 
 // --- Existing tables with added tenant_id ---
 
-export const EmailTemplate = sqliteTable("email_templates", {
-  id: text("id").primaryKey(),
-  tenantId: text("tenant_id").notNull(),
-  slug: text("slug").notNull().unique(),
-  subject: text("subject").notNull(),
-  content: text("content").notNull(),
-  version: integer("version").notNull().default(1),
-  createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
-  updatedAt: text("updated_at").$defaultFn(() => new Date().toISOString()),
-});
+export const EmailTemplate = sqliteTable(
+  "email_templates",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id").notNull(),
+    slug: text("slug").notNull(),
+    subject: text("subject").notNull(),
+    content: text("content").notNull(),
+    version: integer("version").notNull().default(1),
+    createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
+    updatedAt: text("updated_at").$defaultFn(() => new Date().toISOString()),
+  },
+  (table) => [
+    uniqueIndex("idx_email_templates_tenant_slug").on(
+      table.tenantId,
+      table.slug,
+    ),
+  ],
+);
 
-export const EmailVendor = sqliteTable("email_vendors", {
-  id: text("id").primaryKey(),
-  tenantId: text("tenant_id").notNull(),
-  name: text("name").notNull().unique(),
-  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
-  priority: integer("priority").notNull(),
-  apiEndpoint: text("api_endpoint").notNull(),
-  apiToken: text("api_token").notNull(),
-  fromEmail: text("from_email").notNull(),
-  fromName: text("from_name").notNull(),
-  config: text("config"),
-  createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
-  updatedAt: text("updated_at").$defaultFn(() => new Date().toISOString()),
-});
+export const EmailVendor = sqliteTable(
+  "email_vendors",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id").notNull(),
+    name: text("name").notNull(),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    priority: integer("priority").notNull(),
+    apiEndpoint: text("api_endpoint").notNull(),
+    apiToken: text("api_token").notNull(),
+    fromEmail: text("from_email").notNull(),
+    fromName: text("from_name").notNull(),
+    config: text("config"),
+    createdAt: text("created_at").$defaultFn(() => new Date().toISOString()),
+    updatedAt: text("updated_at").$defaultFn(() => new Date().toISOString()),
+  },
+  (table) => [
+    uniqueIndex("idx_email_vendors_tenant_name").on(table.tenantId, table.name),
+  ],
+);
 
 export type EmailVendorRow = typeof EmailVendor.$inferSelect;
 

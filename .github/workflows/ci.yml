@@ -5,10 +5,47 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  check:
+  format:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
+        env:
+          GIT_DIFF_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+
+  build-worker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+  build-admin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -17,29 +54,51 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build:admin
-      - run: npm run build
-      - run: npm test
-      - run: npm run format -- --check
 
-  playwright:
+  unit-tests:
     runs-on: ubuntu-latest
-    needs: [check]
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: "22"
-          cache: "npm"
+          node-version: 22
+          cache: npm
       - run: npm ci
-      - run: npx playwright install chromium
+      - run: npm run test:unit
+
+  worker-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run test:worker
+
+  playwright:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [build-worker, build-admin, unit-tests, worker-tests]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
       - run: npm run build:admin
       - name: Run Playwright tests
-        run: npx playwright test --config e2e/playwright.config.ts
+        run: npm run test:e2e
         env:
-          JWT_SECRET: test-jwt-secret-for-playwright
-          CONFIG_ENCRYPTION_KEY: test-encryption-key-for-playwright
-          RESET_TOKEN_SECRET: test-reset-secret-for-playwright
-          WEBHOOK_SECRET: test-webhook-secret-for-playwright
+          JWT_SECRET: playwright-jwt-secret-123456789
+          CONFIG_ENCRYPTION_KEY: playwright-config-key-123456789
+          RESET_TOKEN_SECRET: playwright-reset-secret-123456789
+          WEBHOOK_SECRET: playwright-webhook-secret-123456789
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -49,8 +108,10 @@ jobs:
 
   deploy-staging:
     if: github.event_name == 'pull_request'
-    needs: [check]
+    needs:
+      [format, build-worker, build-admin, unit-tests, worker-tests, playwright]
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     environment: staging
     steps:
       - uses: actions/checkout@v7
@@ -67,8 +128,10 @@ jobs:
 
   deploy-production:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [check]
+    needs:
+      [format, build-worker, build-admin, unit-tests, worker-tests, playwright]
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     environment: production
     steps:
       - uses: actions/checkout@v7

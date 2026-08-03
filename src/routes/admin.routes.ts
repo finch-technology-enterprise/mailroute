@@ -24,16 +24,25 @@ import type { AppEnv } from "../lib/app-env";
 
 const admin = new Hono<AppEnv>();
 
-async function logActivity(c: CloudflareBindings, type: string, summary: string, detail?: string, tenantId?: string) {
+async function logActivity(
+  c: CloudflareBindings,
+  type: string,
+  summary: string,
+  detail?: string,
+  tenantId?: string,
+) {
   try {
-    await drizzle(c.D1_DATABASE).insert(ActivityLog).values({
-      id: crypto.randomUUID(),
-      tenantId: tenantId || "",
-      type,
-      summary,
-      detail: detail || null,
-      createdAt: new Date().toISOString(),
-    }).execute();
+    await drizzle(c.D1_DATABASE)
+      .insert(ActivityLog)
+      .values({
+        id: crypto.randomUUID(),
+        tenantId: tenantId || "",
+        type,
+        summary,
+        detail: detail || null,
+        createdAt: new Date().toISOString(),
+      })
+      .execute();
   } catch {}
 }
 
@@ -57,7 +66,9 @@ admin.get("/vendor-health", async (c) => {
         db
           .select({ count: count() })
           .from(SendLog)
-          .where(and(eq(SendLog.vendorId, v.id), eq(SendLog.tenantId, tenantId)))
+          .where(
+            and(eq(SendLog.vendorId, v.id), eq(SendLog.tenantId, tenantId)),
+          )
           .get(),
         db
           .select({ count: count() })
@@ -89,7 +100,10 @@ admin.get("/vendor-health", async (c) => {
 admin.get("/vendors", async (c) => {
   const db = drizzle(c.env.D1_DATABASE);
   const tenantId = c.get("tenantId");
-  const limit = Math.min(Math.max(parseInt(c.req.query("limit") || "100", 10), 1), 200);
+  const limit = Math.min(
+    Math.max(parseInt(c.req.query("limit") || "100", 10), 1),
+    200,
+  );
   const rows = await db
     .select()
     .from(EmailVendor)
@@ -112,56 +126,87 @@ const vendorSchema = z.object({
   apiToken: z.string().min(1).max(2048),
   fromEmail: z.string().email().max(254),
   fromName: z.string().max(128).default(""),
-  config: z.string().optional().refine((val) => {
-    if (!val) return true;
-    try { JSON.parse(val); return true; } catch { return false; }
-  }, "Config must be valid JSON"),
+  config: z
+    .string()
+    .optional()
+    .refine((val) => {
+      if (!val) return true;
+      try {
+        JSON.parse(val);
+        return true;
+      } catch {
+        return false;
+      }
+    }, "Config must be valid JSON"),
 });
 
-admin.post("/vendors", requireRole("admin"), zValidator("json", vendorSchema), async (c) => {
-  const db = drizzle(c.env.D1_DATABASE);
-  const tenantId = c.get("tenantId");
-  const data = c.req.valid("json");
-  const id = data.name;
-  await db
-    .insert(EmailVendor)
-    .values({ id, tenantId, ...data })
-    .execute();
-  EmailVendorService.invalidateCache(tenantId);
-  const row = await db
-    .select()
-    .from(EmailVendor)
-    .where(and(eq(EmailVendor.id, id), eq(EmailVendor.tenantId, tenantId)))
-    .get();
-  await logActivity(c.env, "vendor_created", `Vendor "${data.name}" created`, undefined, tenantId);
-  return c.json(ApiResponse(true, "Vendor created", row), 201);
-});
+admin.post(
+  "/vendors",
+  requireRole("admin"),
+  zValidator("json", vendorSchema),
+  async (c) => {
+    const db = drizzle(c.env.D1_DATABASE);
+    const tenantId = c.get("tenantId");
+    const data = c.req.valid("json");
+    const id = crypto.randomUUID();
+    await db
+      .insert(EmailVendor)
+      .values({ id, tenantId, ...data })
+      .execute();
+    EmailVendorService.invalidateCache(tenantId);
+    const row = await db
+      .select()
+      .from(EmailVendor)
+      .where(and(eq(EmailVendor.id, id), eq(EmailVendor.tenantId, tenantId)))
+      .get();
+    await logActivity(
+      c.env,
+      "vendor_created",
+      `Vendor "${data.name}" created`,
+      undefined,
+      tenantId,
+    );
+    return c.json(ApiResponse(true, "Vendor created", row), 201);
+  },
+);
 
 const vendorUpdateSchema = vendorSchema.partial();
 
-admin.put("/vendors/:id", requireRole("admin"), zValidator("json", vendorUpdateSchema), async (c) => {
-  const db = drizzle(c.env.D1_DATABASE);
-  const tenantId = c.get("tenantId");
-  const id = c.req.param("id");
-  const data = c.req.valid("json");
-  await db
-    .update(EmailVendor)
-    .set(data)
-    .where(and(eq(EmailVendor.id, id), eq(EmailVendor.tenantId, tenantId)))
-    .execute();
-  EmailVendorService.invalidateCache(tenantId);
-  const row = await db
-    .select()
-    .from(EmailVendor)
-    .where(and(eq(EmailVendor.id, id), eq(EmailVendor.tenantId, tenantId)))
-    .get();
-  if (!row) return c.json(ApiResponse(false, "Vendor not found"), 404);
-  await logActivity(c.env, "vendor_updated", `Vendor "${id}" updated`, undefined, tenantId);
-  return c.json(ApiResponse(true, "Vendor updated", row));
-});
+admin.put(
+  "/vendors/:id",
+  requireRole("admin"),
+  zValidator("json", vendorUpdateSchema),
+  async (c) => {
+    const db = drizzle(c.env.D1_DATABASE);
+    const tenantId = c.get("tenantId");
+    const id = c.req.param("id");
+    const data = c.req.valid("json");
+    await db
+      .update(EmailVendor)
+      .set(data)
+      .where(and(eq(EmailVendor.id, id), eq(EmailVendor.tenantId, tenantId)))
+      .execute();
+    EmailVendorService.invalidateCache(tenantId);
+    const row = await db
+      .select()
+      .from(EmailVendor)
+      .where(and(eq(EmailVendor.id, id), eq(EmailVendor.tenantId, tenantId)))
+      .get();
+    if (!row) return c.json(ApiResponse(false, "Vendor not found"), 404);
+    await logActivity(
+      c.env,
+      "vendor_updated",
+      `Vendor "${id}" updated`,
+      undefined,
+      tenantId,
+    );
+    return c.json(ApiResponse(true, "Vendor updated", row));
+  },
+);
 
 admin.delete("/vendors/:id", async (c) => {
-  if (c.get("userRole") !== "admin") return c.json(ApiResponse(false, "Insufficient permissions"), 403);
+  if (c.get("userRole") !== "admin")
+    return c.json(ApiResponse(false, "Insufficient permissions"), 403);
   const db = drizzle(c.env.D1_DATABASE);
   const tenantId = c.get("tenantId");
   const id = c.req.param("id");
@@ -171,9 +216,18 @@ admin.delete("/vendors/:id", async (c) => {
     .where(and(eq(EmailVendor.id, id), eq(EmailVendor.tenantId, tenantId)))
     .get();
   if (!existing) return c.json(ApiResponse(false, "Vendor not found"), 404);
-  await db.delete(EmailVendor).where(and(eq(EmailVendor.id, id), eq(EmailVendor.tenantId, tenantId))).execute();
+  await db
+    .delete(EmailVendor)
+    .where(and(eq(EmailVendor.id, id), eq(EmailVendor.tenantId, tenantId)))
+    .execute();
   EmailVendorService.invalidateCache(tenantId);
-  await logActivity(c.env, "vendor_deleted", `Vendor "${id}" deleted`, undefined, tenantId);
+  await logActivity(
+    c.env,
+    "vendor_deleted",
+    `Vendor "${id}" deleted`,
+    undefined,
+    tenantId,
+  );
   return c.json(ApiResponse(true, "Vendor deleted"));
 });
 
@@ -182,8 +236,16 @@ admin.delete("/vendors/:id", async (c) => {
 admin.get("/templates", async (c) => {
   const db = drizzle(c.env.D1_DATABASE);
   const tenantId = c.get("tenantId");
-  const limit = Math.min(Math.max(parseInt(c.req.query("limit") || "100", 10), 1), 200);
-  const rows = await db.select().from(EmailTemplate).where(eq(EmailTemplate.tenantId, tenantId)).limit(limit).all();
+  const limit = Math.min(
+    Math.max(parseInt(c.req.query("limit") || "100", 10), 1),
+    200,
+  );
+  const rows = await db
+    .select()
+    .from(EmailTemplate)
+    .where(eq(EmailTemplate.tenantId, tenantId))
+    .limit(limit)
+    .all();
   return c.json(ApiResponse(true, null, rows));
 });
 
@@ -191,30 +253,36 @@ const previewSchema = z.object({
   replacements: z.record(z.string(), z.coerce.string()).default({}),
 });
 
-admin.post("/templates/:id/preview", zValidator("json", previewSchema), async (c) => {
-  const db = drizzle(c.env.D1_DATABASE);
-  const tenantId = c.get("tenantId");
-  const id = c.req.param("id");
-  const { replacements } = c.req.valid("json");
+admin.post(
+  "/templates/:id/preview",
+  zValidator("json", previewSchema),
+  async (c) => {
+    const db = drizzle(c.env.D1_DATABASE);
+    const tenantId = c.get("tenantId");
+    const id = c.req.param("id");
+    const { replacements } = c.req.valid("json");
 
-  const template = await db
-    .select()
-    .from(EmailTemplate)
-    .where(and(eq(EmailTemplate.id, id), eq(EmailTemplate.tenantId, tenantId)))
-    .get();
+    const template = await db
+      .select()
+      .from(EmailTemplate)
+      .where(
+        and(eq(EmailTemplate.id, id), eq(EmailTemplate.tenantId, tenantId)),
+      )
+      .get();
 
-  if (!template) return c.json(ApiResponse(false, "Template not found"), 404);
+    if (!template) return c.json(ApiResponse(false, "Template not found"), 404);
 
-  let subject = template.subject;
-  let content = template.content;
-  Object.entries(replacements).forEach(([key, value]) => {
-    const token = `{{${key}}}`;
-    subject = subject.split(token).join(value);
-    content = content.split(token).join(value);
-  });
+    let subject = template.subject;
+    let content = template.content;
+    Object.entries(replacements).forEach(([key, value]) => {
+      const token = `{{${key}}}`;
+      subject = subject.split(token).join(value);
+      content = content.split(token).join(value);
+    });
 
-  return c.json(ApiResponse(true, null, { subject, content }));
-});
+    return c.json(ApiResponse(true, null, { subject, content }));
+  },
+);
 
 const templateSchema = z.object({
   slug: z
@@ -232,7 +300,7 @@ admin.post("/templates", zValidator("json", templateSchema), async (c) => {
   const db = drizzle(c.env.D1_DATABASE);
   const tenantId = c.get("tenantId");
   const data = c.req.valid("json");
-  const id = data.slug;
+  const id = crypto.randomUUID();
   await db
     .insert(EmailTemplate)
     .values({ id, tenantId, ...data, version: 1 })
@@ -241,9 +309,20 @@ admin.post("/templates", zValidator("json", templateSchema), async (c) => {
   const row = await db
     .select()
     .from(EmailTemplate)
-    .where(and(eq(EmailTemplate.slug, data.slug), eq(EmailTemplate.tenantId, tenantId)))
+    .where(
+      and(
+        eq(EmailTemplate.slug, data.slug),
+        eq(EmailTemplate.tenantId, tenantId),
+      ),
+    )
     .get();
-  await logActivity(c.env, "template_created", `Template "${data.slug}" created`, undefined, tenantId);
+  await logActivity(
+    c.env,
+    "template_created",
+    `Template "${data.slug}" created`,
+    undefined,
+    tenantId,
+  );
   return c.json(ApiResponse(true, "Template created", row), 201);
 });
 
@@ -259,29 +338,42 @@ admin.put(
     const existing = await db
       .select()
       .from(EmailTemplate)
-      .where(and(eq(EmailTemplate.id, id), eq(EmailTemplate.tenantId, tenantId)))
+      .where(
+        and(eq(EmailTemplate.id, id), eq(EmailTemplate.tenantId, tenantId)),
+      )
       .get();
     if (!existing) return c.json(ApiResponse(false, "Template not found"), 404);
 
     await db
       .update(EmailTemplate)
       .set({ ...data, version: (existing.version ?? 1) + 1 })
-      .where(and(eq(EmailTemplate.id, id), eq(EmailTemplate.tenantId, tenantId)))
+      .where(
+        and(eq(EmailTemplate.id, id), eq(EmailTemplate.tenantId, tenantId)),
+      )
       .execute();
     EmailTemplateService.invalidateCache(tenantId);
     const row = await db
       .select()
       .from(EmailTemplate)
-      .where(and(eq(EmailTemplate.id, id), eq(EmailTemplate.tenantId, tenantId)))
+      .where(
+        and(eq(EmailTemplate.id, id), eq(EmailTemplate.tenantId, tenantId)),
+      )
       .get();
     if (!row) return c.json(ApiResponse(false, "Template not found"), 404);
-    await logActivity(c.env, "template_updated", `Template "${id}" updated to v${row.version}`, undefined, tenantId);
+    await logActivity(
+      c.env,
+      "template_updated",
+      `Template "${id}" updated to v${row.version}`,
+      undefined,
+      tenantId,
+    );
     return c.json(ApiResponse(true, "Template updated", row));
   },
 );
 
 admin.delete("/templates/:id", async (c) => {
-  if (c.get("userRole") !== "admin") return c.json(ApiResponse(false, "Insufficient permissions"), 403);
+  if (c.get("userRole") !== "admin")
+    return c.json(ApiResponse(false, "Insufficient permissions"), 403);
   const db = drizzle(c.env.D1_DATABASE);
   const tenantId = c.get("tenantId");
   const id = c.req.param("id");
@@ -291,9 +383,18 @@ admin.delete("/templates/:id", async (c) => {
     .where(and(eq(EmailTemplate.id, id), eq(EmailTemplate.tenantId, tenantId)))
     .get();
   if (!existing) return c.json(ApiResponse(false, "Template not found"), 404);
-  await db.delete(EmailTemplate).where(and(eq(EmailTemplate.id, id), eq(EmailTemplate.tenantId, tenantId))).execute();
+  await db
+    .delete(EmailTemplate)
+    .where(and(eq(EmailTemplate.id, id), eq(EmailTemplate.tenantId, tenantId)))
+    .execute();
   EmailTemplateService.invalidateCache(tenantId);
-  await logActivity(c.env, "template_deleted", `Template "${id}" deleted`, undefined, tenantId);
+  await logActivity(
+    c.env,
+    "template_deleted",
+    `Template "${id}" deleted`,
+    undefined,
+    tenantId,
+  );
   return c.json(ApiResponse(true, "Template deleted"));
 });
 
@@ -303,9 +404,21 @@ admin.get("/stats", async (c) => {
   const db = drizzle(c.env.D1_DATABASE);
   const tenantId = c.get("tenantId");
   const [vendors, templates, sendCount] = await Promise.all([
-    db.select().from(EmailVendor).where(eq(EmailVendor.tenantId, tenantId)).all(),
-    db.select().from(EmailTemplate).where(eq(EmailTemplate.tenantId, tenantId)).all(),
-    db.select({ total: count() }).from(SendLog).where(eq(SendLog.tenantId, tenantId)).get(),
+    db
+      .select()
+      .from(EmailVendor)
+      .where(eq(EmailVendor.tenantId, tenantId))
+      .all(),
+    db
+      .select()
+      .from(EmailTemplate)
+      .where(eq(EmailTemplate.tenantId, tenantId))
+      .all(),
+    db
+      .select({ total: count() })
+      .from(SendLog)
+      .where(eq(SendLog.tenantId, tenantId))
+      .get(),
   ]);
   const recentFailed = await db
     .select({ total: count() })
@@ -337,24 +450,32 @@ const testSendSchema = z.object({
   vendor: z.string().optional(),
 });
 
-admin.post("/test-send", requireRole("admin"), zValidator("json", testSendSchema), async (c) => {
-  const { to, subject, content, vendor } = c.req.valid("json");
-  const emailService = new EmailService(c.env, c.get("tenantId"));
-  try {
-    await emailService.sendEmail(c, { to, subject, content }, vendor);
-    return c.json(ApiResponse(true, "Email sent"));
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return c.json(ApiResponse(false, message), 502);
-  }
-});
+admin.post(
+  "/test-send",
+  requireRole("admin"),
+  zValidator("json", testSendSchema),
+  async (c) => {
+    const { to, subject, content, vendor } = c.req.valid("json");
+    const emailService = new EmailService(c.env, c.get("tenantId"));
+    try {
+      await emailService.sendEmail(c, { to, subject, content }, vendor);
+      return c.json(ApiResponse(true, "Email sent"));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return c.json(ApiResponse(false, message), 502);
+    }
+  },
+);
 
 // --- Logs ---
 
 admin.get("/logs", async (c) => {
   const db = drizzle(c.env.D1_DATABASE);
   const tenantId = c.get("tenantId");
-  const limit = Math.min(Math.max(parseInt(c.req.query("limit") || "50", 10), 1), 200);
+  const limit = Math.min(
+    Math.max(parseInt(c.req.query("limit") || "50", 10), 1),
+    200,
+  );
   const [sends, activities] = await Promise.all([
     db
       .select({
@@ -394,7 +515,10 @@ admin.get("/logs", async (c) => {
   }> = [];
   let si = 0;
   let ai = 0;
-  while (mapped.length < limit && (si < sends.length || ai < activities.length)) {
+  while (
+    mapped.length < limit &&
+    (si < sends.length || ai < activities.length)
+  ) {
     const s = si < sends.length ? sends[si] : null;
     const a = ai < activities.length ? activities[ai] : null;
     if (s && (!a || s.createdAt >= a.createdAt)) {
@@ -445,8 +569,16 @@ admin.get("/logs/export", async (c) => {
   }
 
   const cols: Array<keyof typeof SendLog._.columns> = [
-    "id", "tenantId", "vendorId", "vendorName", "toEmail",
-    "subject", "status", "error", "durationMs", "createdAt",
+    "id",
+    "tenantId",
+    "vendorId",
+    "vendorName",
+    "toEmail",
+    "subject",
+    "status",
+    "error",
+    "durationMs",
+    "createdAt",
   ];
   const escape = (v: unknown): string => {
     const s = v == null ? "" : String(v);
@@ -454,7 +586,10 @@ admin.get("/logs/export", async (c) => {
       ? `"${s.replace(/"/g, '""')}"`
       : s;
   };
-  const csv = [cols.join(","), ...rows.map((r) => cols.map((c) => escape((r as any)[c])).join(","))].join("\n");
+  const csv = [
+    cols.join(","),
+    ...rows.map((r) => cols.map((c) => escape((r as any)[c])).join(",")),
+  ].join("\n");
 
   return new Response(csv, {
     headers: {
@@ -473,7 +608,10 @@ const createApiKeySchema = z.object({
 admin.get("/api-keys", async (c) => {
   const db = drizzle(c.env.D1_DATABASE);
   const tenantId = c.get("tenantId");
-  const limit = Math.min(Math.max(parseInt(c.req.query("limit") || "100", 10), 1), 200);
+  const limit = Math.min(
+    Math.max(parseInt(c.req.query("limit") || "100", 10), 1),
+    200,
+  );
   const keys = await db
     .select({
       id: ApiKey.id,
@@ -491,30 +629,48 @@ admin.get("/api-keys", async (c) => {
   return c.json(ApiResponse(true, null, keys));
 });
 
-admin.post("/api-keys", requireRole("admin"), zValidator("json", createApiKeySchema), async (c) => {
-  const db = drizzle(c.env.D1_DATABASE);
-  const tenantId = c.get("tenantId");
-  const { name } = c.req.valid("json");
+admin.post(
+  "/api-keys",
+  requireRole("admin"),
+  zValidator("json", createApiKeySchema),
+  async (c) => {
+    const db = drizzle(c.env.D1_DATABASE);
+    const tenantId = c.get("tenantId");
+    const { name } = c.req.valid("json");
 
-  const rawKey = generateApiKey();
-  const keyHash = await hashApiKey(rawKey, c.env.CONFIG_ENCRYPTION_KEY);
-  const keyPrefix = rawKey.slice(0, 10) + "...";
+    const rawKey = generateApiKey();
+    const keyHash = await hashApiKey(rawKey, c.env.CONFIG_ENCRYPTION_KEY);
+    const keyPrefix = rawKey.slice(0, 10) + "...";
 
-  await db.insert(ApiKey).values({
-    id: crypto.randomUUID(),
-    tenantId,
-    name,
-    keyHash,
-    keyPrefix,
-  }).execute();
+    await db
+      .insert(ApiKey)
+      .values({
+        id: crypto.randomUUID(),
+        tenantId,
+        name,
+        keyHash,
+        keyPrefix,
+      })
+      .execute();
 
-  await logActivity(c.env, "api_key_created", `API key "${name}" created`, undefined, tenantId);
+    await logActivity(
+      c.env,
+      "api_key_created",
+      `API key "${name}" created`,
+      undefined,
+      tenantId,
+    );
 
-  return c.json(ApiResponse(true, "API key created", { rawKey, name, keyPrefix }), 201);
-});
+    return c.json(
+      ApiResponse(true, "API key created", { rawKey, name, keyPrefix }),
+      201,
+    );
+  },
+);
 
 admin.delete("/api-keys/:id", async (c) => {
-  if (c.get("userRole") !== "admin") return c.json(ApiResponse(false, "Insufficient permissions"), 403);
+  if (c.get("userRole") !== "admin")
+    return c.json(ApiResponse(false, "Insufficient permissions"), 403);
   const db = drizzle(c.env.D1_DATABASE);
   const tenantId = c.get("tenantId");
   const id = c.req.param("id");
@@ -526,11 +682,22 @@ admin.delete("/api-keys/:id", async (c) => {
     .get();
 
   if (!existing) return c.json(ApiResponse(false, "API key not found"), 404);
-  if (existing.revokedAt) return c.json(ApiResponse(false, "API key already revoked"));
+  if (existing.revokedAt)
+    return c.json(ApiResponse(false, "API key already revoked"));
 
-  await db.update(ApiKey).set({ revokedAt: new Date().toISOString() }).where(eq(ApiKey.id, id)).execute();
+  await db
+    .update(ApiKey)
+    .set({ revokedAt: new Date().toISOString() })
+    .where(eq(ApiKey.id, id))
+    .execute();
 
-  await logActivity(c.env, "api_key_revoked", `API key "${existing.name}" revoked`, undefined, tenantId);
+  await logActivity(
+    c.env,
+    "api_key_revoked",
+    `API key "${existing.name}" revoked`,
+    undefined,
+    tenantId,
+  );
 
   return c.json(ApiResponse(true, "API key revoked"));
 });
@@ -567,77 +734,108 @@ admin.get("/users", async (c) => {
   return c.json(ApiResponse(true, null, rows));
 });
 
-admin.post("/users", requireRole("admin"), zValidator("json", createUserSchema), async (c) => {
-  const db = drizzle(c.env.D1_DATABASE);
-  const tenantId = c.get("tenantId");
-  const data = c.req.valid("json");
+admin.post(
+  "/users",
+  requireRole("admin"),
+  zValidator("json", createUserSchema),
+  async (c) => {
+    const db = drizzle(c.env.D1_DATABASE);
+    const tenantId = c.get("tenantId");
+    const data = c.req.valid("json");
 
-  const existing = await db.select().from(User).where(eq(User.email, data.email)).get();
-  if (existing) return c.json(ApiResponse(false, "Email already in use"), 409);
+    const existing = await db
+      .select()
+      .from(User)
+      .where(eq(User.email, data.email))
+      .get();
+    if (existing)
+      return c.json(ApiResponse(false, "Email already in use"), 409);
 
-  const passwordHash = await hashPassword(data.password);
-  const id = crypto.randomUUID();
+    const passwordHash = await hashPassword(data.password);
+    const id = crypto.randomUUID();
 
-  await db.insert(User).values({
-    id,
-    tenantId,
-    email: data.email,
-    passwordHash,
-    name: data.name,
-    role: data.role,
-  }).execute();
+    await db
+      .insert(User)
+      .values({
+        id,
+        tenantId,
+        email: data.email,
+        passwordHash,
+        name: data.name,
+        role: data.role,
+      })
+      .execute();
 
-  const row = await db
-    .select({
-      id: User.id,
-      email: User.email,
-      name: User.name,
-      role: User.role,
-      emailVerified: User.emailVerified,
-      createdAt: User.createdAt,
-    })
-    .from(User)
-    .where(eq(User.id, id))
-    .get();
+    const row = await db
+      .select({
+        id: User.id,
+        email: User.email,
+        name: User.name,
+        role: User.role,
+        emailVerified: User.emailVerified,
+        createdAt: User.createdAt,
+      })
+      .from(User)
+      .where(eq(User.id, id))
+      .get();
 
-  await logActivity(c.env, "user_created", `User "${data.email}" created`, undefined, tenantId);
-  return c.json(ApiResponse(true, "User created", row), 201);
-});
+    await logActivity(
+      c.env,
+      "user_created",
+      `User "${data.email}" created`,
+      undefined,
+      tenantId,
+    );
+    return c.json(ApiResponse(true, "User created", row), 201);
+  },
+);
 
-admin.put("/users/:id", requireRole("admin"), zValidator("json", updateUserSchema), async (c) => {
-  const db = drizzle(c.env.D1_DATABASE);
-  const tenantId = c.get("tenantId");
-  const id = c.req.param("id");
-  const data = c.req.valid("json");
+admin.put(
+  "/users/:id",
+  requireRole("admin"),
+  zValidator("json", updateUserSchema),
+  async (c) => {
+    const db = drizzle(c.env.D1_DATABASE);
+    const tenantId = c.get("tenantId");
+    const id = c.req.param("id");
+    const data = c.req.valid("json");
 
-  const existing = await db
-    .select()
-    .from(User)
-    .where(and(eq(User.id, id), eq(User.tenantId, tenantId)))
-    .get();
-  if (!existing) return c.json(ApiResponse(false, "User not found"), 404);
+    const existing = await db
+      .select()
+      .from(User)
+      .where(and(eq(User.id, id), eq(User.tenantId, tenantId)))
+      .get();
+    if (!existing) return c.json(ApiResponse(false, "User not found"), 404);
 
-  await db.update(User).set(data).where(eq(User.id, id)).execute();
+    await db.update(User).set(data).where(eq(User.id, id)).execute();
 
-  const row = await db
-    .select({
-      id: User.id,
-      email: User.email,
-      name: User.name,
-      role: User.role,
-      emailVerified: User.emailVerified,
-      createdAt: User.createdAt,
-    })
-    .from(User)
-    .where(eq(User.id, id))
-    .get();
+    const row = await db
+      .select({
+        id: User.id,
+        email: User.email,
+        name: User.name,
+        role: User.role,
+        emailVerified: User.emailVerified,
+        createdAt: User.createdAt,
+      })
+      .from(User)
+      .where(eq(User.id, id))
+      .get();
 
-  await logActivity(c.env, "user_updated", `User "${existing.email}" updated`, undefined, tenantId);
-  return c.json(ApiResponse(true, "User updated", row));
-});
+    await logActivity(
+      c.env,
+      "user_updated",
+      `User "${existing.email}" updated`,
+      undefined,
+      tenantId,
+    );
+    return c.json(ApiResponse(true, "User updated", row));
+  },
+);
 
 admin.delete("/users/:id", async (c) => {
-  if (c.get("userRole") !== "admin") return c.json(ApiResponse(false, "Insufficient permissions"), 403);
+  if (c.get("userRole") !== "admin")
+    return c.json(ApiResponse(false, "Insufficient permissions"), 403);
   const db = drizzle(c.env.D1_DATABASE);
   const tenantId = c.get("tenantId");
   const id = c.req.param("id");
@@ -650,10 +848,17 @@ admin.delete("/users/:id", async (c) => {
   if (!existing) return c.json(ApiResponse(false, "User not found"), 404);
 
   const currentUserId = c.get("userId");
-  if (id === currentUserId) return c.json(ApiResponse(false, "Cannot delete yourself"), 400);
+  if (id === currentUserId)
+    return c.json(ApiResponse(false, "Cannot delete yourself"), 400);
 
   await db.delete(User).where(eq(User.id, id)).execute();
-  await logActivity(c.env, "user_deleted", `User "${existing.email}" deleted`, undefined, tenantId);
+  await logActivity(
+    c.env,
+    "user_deleted",
+    `User "${existing.email}" deleted`,
+    undefined,
+    tenantId,
+  );
   return c.json(ApiResponse(true, "User deleted"));
 });
 
@@ -663,33 +868,52 @@ admin.post("/push/subscribe", async (c) => {
   const db = drizzle(c.env.D1_DATABASE);
   const tenantId = c.get("tenantId");
   const body = await c.req.json();
-  const { endpoint, keys } = body as { endpoint: string; keys: { p256dh: string; auth: string } };
+  const { endpoint, keys } = body as {
+    endpoint: string;
+    keys: { p256dh: string; auth: string };
+  };
   if (!endpoint || !keys?.p256dh || !keys?.auth) {
     return c.json(ApiResponse(false, "Invalid subscription"), 400);
   }
-  const existing = await db.select().from(PushSubscription)
-    .where(and(eq(PushSubscription.endpoint, endpoint), eq(PushSubscription.tenantId, tenantId)))
+  const existing = await db
+    .select()
+    .from(PushSubscription)
+    .where(
+      and(
+        eq(PushSubscription.endpoint, endpoint),
+        eq(PushSubscription.tenantId, tenantId),
+      ),
+    )
     .get();
   if (existing) return c.json(ApiResponse(true, "Already subscribed"));
-  await db.insert(PushSubscription).values({
-    id: crypto.randomUUID(),
-    tenantId,
-    endpoint,
-    p256dhKey: keys.p256dh,
-    authKey: keys.auth,
-    userAgent: c.req.header("user-agent") || null,
-    createdAt: new Date().toISOString(),
-  }).execute();
+  await db
+    .insert(PushSubscription)
+    .values({
+      id: crypto.randomUUID(),
+      tenantId,
+      endpoint,
+      p256dhKey: keys.p256dh,
+      authKey: keys.auth,
+      userAgent: c.req.header("user-agent") || null,
+      createdAt: new Date().toISOString(),
+    })
+    .execute();
   return c.json(ApiResponse(true, "Subscribed"));
 });
 
 admin.delete("/push/subscribe", async (c) => {
   const db = drizzle(c.env.D1_DATABASE);
   const tenantId = c.get("tenantId");
-  const { endpoint } = await c.req.json() as { endpoint: string };
+  const { endpoint } = (await c.req.json()) as { endpoint: string };
   if (!endpoint) return c.json(ApiResponse(false, "Missing endpoint"), 400);
-  await db.delete(PushSubscription)
-    .where(and(eq(PushSubscription.endpoint, endpoint), eq(PushSubscription.tenantId, tenantId)))
+  await db
+    .delete(PushSubscription)
+    .where(
+      and(
+        eq(PushSubscription.endpoint, endpoint),
+        eq(PushSubscription.tenantId, tenantId),
+      ),
+    )
     .execute();
   return c.json(ApiResponse(true, "Unsubscribed"));
 });
