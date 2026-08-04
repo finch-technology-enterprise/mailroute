@@ -1,8 +1,31 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   adapterSend: vi.fn(),
   updates: [] as Array<Record<string, unknown>>,
+  updateWhereConditions: [] as unknown[],
+  candidates: [] as Array<Record<string, unknown>>,
+  claimChanges: 1,
+}));
+
+vi.mock("drizzle-orm", () => ({
+  eq: (column: { name?: string }, value: unknown) => ({
+    op: "eq",
+    column: column.name,
+    value,
+  }),
+  and: (...conditions: unknown[]) => ({ op: "and", conditions }),
+  or: (...conditions: unknown[]) => ({ op: "or", conditions }),
+  lt: (column: { name?: string }, value: unknown) => ({
+    op: "lt",
+    column: column.name,
+    value,
+  }),
+  lte: (column: { name?: string }, value: unknown) => ({
+    op: "lte",
+    column: column.name,
+    value,
+  }),
 }));
 
 vi.mock("../services/email-vendor.service", () => ({
@@ -34,27 +57,19 @@ vi.mock("drizzle-orm/d1", () => ({
     select: () => ({
       from: () => ({
         where: () => ({
-          all: async () => [
-            {
-              id: "scheduled-1",
-              tenantId: "tenant-1",
-              payload: JSON.stringify({
-                to: "to@example.com",
-                subject: "Scheduled",
-                content: "<p>Hi</p>",
-              }),
-            },
-          ],
+          all: async () => mocks.candidates,
         }),
       }),
     }),
     update: () => ({
       set: (value: Record<string, unknown>) => ({
-        where: () => ({
-          execute: async () => {
-            mocks.updates.push(value);
-          },
-        }),
+        where: (condition: unknown) => {
+          mocks.updateWhereConditions.push(condition);
+          mocks.updates.push(value);
+          return {
+            execute: async () => ({ meta: { changes: mocks.claimChanges } }),
+          };
+        },
       }),
     }),
   })),
@@ -62,9 +77,45 @@ vi.mock("drizzle-orm/d1", () => ({
 
 import { scheduled } from "../scheduled";
 
+function baseItem(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "scheduled-1",
+    tenantId: "tenant-1",
+    status: "pending",
+    attempt: 0,
+    payload: JSON.stringify({
+      to: "to@example.com",
+      subject: "Scheduled",
+      content: "<p>Hi</p>",
+    }),
+    ...overrides,
+  };
+}
+
+async function runScheduled() {
+  const pending: Promise<unknown>[] = [];
+  await scheduled(
+    {} as ScheduledEvent,
+    { D1_DATABASE: {} } as never,
+    {
+      waitUntil(promise: Promise<unknown>) {
+        pending.push(promise);
+      },
+    } as never,
+  );
+  return pending;
+}
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 beforeEach(() => {
   mocks.adapterSend.mockReset();
   mocks.updates.length = 0;
+  mocks.updateWhereConditions.length = 0;
+  mocks.candidates = [baseItem()];
+  mocks.claimChanges = 1;
 });
 
 describe("scheduled provider message IDs", () => {
@@ -72,18 +123,8 @@ describe("scheduled provider message IDs", () => {
     mocks.adapterSend.mockResolvedValue({
       providerMessageId: "scheduled-provider-id",
     });
-    const pending: Promise<unknown>[] = [];
 
-    await scheduled(
-      {} as ScheduledEvent,
-      { D1_DATABASE: {} } as never,
-      {
-        waitUntil(promise: Promise<unknown>) {
-          pending.push(promise);
-        },
-      } as never,
-    );
-    await Promise.all(pending);
+    await Promise.all(await runScheduled());
 
     expect(mocks.updates).toContainEqual(
       expect.objectContaining({
@@ -95,20 +136,105 @@ describe("scheduled provider message IDs", () => {
 
   it("leaves providerMessageId unchanged when the provider returns a blank ID", async () => {
     mocks.adapterSend.mockResolvedValue({ providerMessageId: " " });
-    const pending: Promise<unknown>[] = [];
 
-    await scheduled(
-      {} as ScheduledEvent,
-      { D1_DATABASE: {} } as never,
-      {
-        waitUntil(promise: Promise<unknown>) {
-          pending.push(promise);
-        },
-      } as never,
-    );
-    await Promise.all(pending);
+    await Promise.all(await runScheduled());
 
     const sentUpdate = mocks.updates.find((update) => update.status === "sent");
     expect(sentUpdate).not.toHaveProperty("providerMessageId");
+  });
+});
+
+describe("scheduled row claiming", () => {
+  it("claims the row before sending, so a concurrent tick can't pick it up mid-send", async () => {
+    mocks.adapterSend.mockResolvedValue({ providerMessageId: "id-1" });
+
+    await Promise.all(await runScheduled());
+
+    expect(mocks.updates[0]).toEqual(
+      expect.objectContaining({ status: "processing", attempt: 1 }),
+    );
+  });
+
+  it("claims via a WHERE clause pinning both id and the status just read — not an unconditional update", async () => {
+    mocks.adapterSend.mockResolvedValue({ providerMessageId: "id-1" });
+
+    await Promise.all(await runScheduled());
+
+    // This is what actually makes the claim atomic: if a concurrent tick
+    // read the same row, its claim attempt only succeeds while status
+    // still matches what *it* read. A regression that drops the status
+    // conjunct (leaving only the id check) would make every claim
+    // unconditionally succeed — this assertion is what would catch that.
+    expect(mocks.updateWhereConditions[0]).toEqual({
+      op: "and",
+      conditions: [
+        { op: "eq", column: "id", value: "scheduled-1" },
+        { op: "eq", column: "status", value: "pending" },
+      ],
+    });
+  });
+
+  it("skips the send entirely when the claim fails (row already claimed elsewhere)", async () => {
+    mocks.claimChanges = 0;
+    mocks.adapterSend.mockResolvedValue({ providerMessageId: "id-1" });
+
+    await Promise.all(await runScheduled());
+
+    expect(mocks.adapterSend).not.toHaveBeenCalled();
+  });
+
+  it("reclaims a stale processing row that's past the lock window", async () => {
+    mocks.candidates = [baseItem({ status: "processing", attempt: 1 })];
+    mocks.adapterSend.mockResolvedValue({ providerMessageId: "id-1" });
+
+    await Promise.all(await runScheduled());
+
+    expect(mocks.adapterSend).toHaveBeenCalled();
+    expect(mocks.updates[0]).toEqual(
+      expect.objectContaining({ status: "processing", attempt: 2 }),
+    );
+  });
+
+  it("marks the item failed without sending once max attempts are exceeded", async () => {
+    mocks.candidates = [baseItem({ attempt: 5 })];
+
+    await Promise.all(await runScheduled());
+
+    expect(mocks.adapterSend).not.toHaveBeenCalled();
+    expect(mocks.updates).toContainEqual(
+      expect.objectContaining({
+        status: "failed",
+        error: "Max attempts exceeded",
+      }),
+    );
+  });
+});
+
+describe("scheduled send timeout", () => {
+  it("aborts the vendor request on timeout and marks the item failed instead of leaving it pending", async () => {
+    vi.useFakeTimers();
+    let sawAbort = false;
+    mocks.adapterSend.mockImplementation(
+      ({ signal }: { signal: AbortSignal }) =>
+        new Promise<never>((_, reject) => {
+          signal.addEventListener("abort", () => {
+            sawAbort = true;
+            reject(new Error("network error after abort"));
+          });
+        }),
+    );
+
+    const pending = await runScheduled();
+    await vi.runAllTimersAsync();
+    await Promise.all(pending);
+
+    // Whichever of the two abort listeners (the adapter's own, or
+    // withTimeout's) fires first wins the race and determines the
+    // rejection message — what matters is that the abort actually
+    // propagated and the item didn't get left "processing" forever.
+    expect(sawAbort).toBe(true);
+    expect(mocks.updates).toContainEqual(
+      expect.objectContaining({ status: "failed" }),
+    );
   });
 });

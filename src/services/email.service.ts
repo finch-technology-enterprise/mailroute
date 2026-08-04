@@ -8,8 +8,8 @@ import { SendLog } from "../db/schema";
 import { ADAPTERS } from "../vendors";
 import { sendPushNotification } from "./push.service";
 import type { SendResult } from "../vendors/types";
+import { withTimeout, VENDOR_TIMEOUT_MS } from "../utils/timeout.util";
 
-const VENDOR_TIMEOUT_MS = 10_000;
 const CIRCUIT_BREAKER_THRESHOLD = 5;
 const CIRCUIT_BREAKER_WINDOW_MS = 300_000;
 const MAX_RETRIES = 3;
@@ -34,22 +34,6 @@ export interface EmailPayload {
     contentType?: string;
   }>;
   track?: boolean;
-}
-
-function withTimeout<T>(
-  operation: (signal: AbortSignal) => Promise<T>,
-  ms: number,
-): Promise<T> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), ms);
-  return Promise.race([
-    operation(controller.signal),
-    new Promise<T>((_, reject) => {
-      controller.signal.addEventListener("abort", () => {
-        reject(new Error(`Vendor timeout after ${ms}ms`));
-      });
-    }),
-  ]).finally(() => clearTimeout(timeout));
 }
 
 function sleep(ms: number): Promise<void> {
