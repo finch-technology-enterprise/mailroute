@@ -21,10 +21,16 @@ test.describe("Email Sending", () => {
     expect(body.status).toBe("healthy");
   });
 
-  test("POST /api/send-email — valid payload returns 200", async ({ request }) => {
+  test("POST /api/send-email — valid payload returns 200", async ({
+    request,
+  }) => {
     const res = await request.post("/api/send-email", {
       headers: headers(),
-      data: { to: "user@example.com", subject: "Hello", content: "<p>World</p>" },
+      data: {
+        to: "user@example.com",
+        subject: "Hello",
+        content: "<p>World</p>",
+      },
     });
     expect(res.status()).toBe(200);
     const body = await res.json();
@@ -32,7 +38,9 @@ test.describe("Email Sending", () => {
     expect(body.data.sendId).toBeTruthy();
   });
 
-  test("POST /api/send-email — invalid email returns 400", async ({ request }) => {
+  test("POST /api/send-email — invalid email returns 400", async ({
+    request,
+  }) => {
     const res = await request.post("/api/send-email", {
       headers: headers(),
       data: { to: "not-an-email", subject: "Test", content: "<p>test</p>" },
@@ -40,7 +48,9 @@ test.describe("Email Sending", () => {
     expect(res.status()).toBe(400);
   });
 
-  test("POST /api/send-email — missing subject returns 400", async ({ request }) => {
+  test("POST /api/send-email — missing subject returns 400", async ({
+    request,
+  }) => {
     const res = await request.post("/api/send-email", {
       headers: headers(),
       data: { to: "user@example.com", content: "<p>test</p>" },
@@ -48,7 +58,9 @@ test.describe("Email Sending", () => {
     expect(res.status()).toBe(400);
   });
 
-  test("POST /api/send-template — missing template returns 404", async ({ request }) => {
+  test("POST /api/send-template — missing template returns 404", async ({
+    request,
+  }) => {
     const res = await request.post("/api/send-template", {
       headers: headers(),
       data: { to: "user@example.com", template: "nonexistent" },
@@ -56,7 +68,9 @@ test.describe("Email Sending", () => {
     expect(res.status()).toBe(404);
   });
 
-  test("POST /api/send-batch — valid batch returns 200 with sendIds", async ({ request }) => {
+  test("POST /api/send-batch — valid batch returns 200 with sendIds", async ({
+    request,
+  }) => {
     const res = await request.post("/api/send-batch", {
       headers: headers(),
       data: {
@@ -84,12 +98,13 @@ test.describe("Email Sending", () => {
     expect(res.status()).toBe(400);
   });
 
-  test("POST /api/send-otp — valid OTP returns 200", async ({ request }) => {
+  test("POST /api/send-otp — missing OTP template returns 404", async ({
+    request,
+  }) => {
     const res = await request.post("/api/send-otp", {
       headers: headers(),
       data: { to: "user@example.com", otp: "123456" },
     });
-    // Returns 200 even if no template — send happens in background
-    expect(res.status()).toBe(200);
+    expect(res.status()).toBe(404);
   });
 });

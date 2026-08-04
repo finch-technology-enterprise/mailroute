@@ -21,15 +21,10 @@ export default defineConfig({
     },
   },
   webServer: {
-    command: "npm run dev",
+    command:
+      "npx wrangler dev --var JWT_SECRET:playwright-jwt-secret-123456789 --var CONFIG_ENCRYPTION_KEY:playwright-config-key-123456789 --var RESET_TOKEN_SECRET:playwright-reset-secret-123456789 --var WEBHOOK_SECRET:playwright-webhook-secret-123456789",
     port: 8787,
     reuseExistingServer: !process.env.CI,
     timeout: 30000,
-    env: {
-      JWT_SECRET: "test-jwt-secret-for-playwright",
-      CONFIG_ENCRYPTION_KEY: "test-encryption-key-for-playwright",
-      RESET_TOKEN_SECRET: "test-reset-secret-for-playwright",
-      WEBHOOK_SECRET: "test-webhook-secret-for-playwright",
-    },
   },
 });

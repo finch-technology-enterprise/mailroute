@@ -1,16 +1,23 @@
 // e2e/admin.spec.ts
 import { test, expect, signupUser } from "./fixtures";
 
+const uid = () => Math.random().toString(36).slice(2, 8);
+
 test.describe("Admin CRUD", () => {
   let token: string;
   let vendorId: string;
+  const templateSlug = `welcome-${uid()}`;
+  const previewSlug = `preview-${uid()}`;
 
   test.beforeAll(async () => {
     const data = await signupUser("http://localhost:8787");
     token = data.token;
   });
 
-  const auth = () => ({ Authorization: `Bearer ${token}`, "Content-Type": "application/json" });
+  const auth = () => ({
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  });
 
   test("GET /api/admin/vendors — returns empty list", async ({ request }) => {
     const res = await request.get("/api/admin/vendors", { headers: auth() });
@@ -48,7 +55,9 @@ test.describe("Admin CRUD", () => {
     expect(body.data.priority).toBe(2);
   });
 
-  test("DELETE /api/admin/vendors/:id — deletes vendor", async ({ request }) => {
+  test("DELETE /api/admin/vendors/:id — deletes vendor", async ({
+    request,
+  }) => {
     const res = await request.delete(`/api/admin/vendors/${vendorId}`, {
       headers: auth(),
     });
@@ -58,28 +67,44 @@ test.describe("Admin CRUD", () => {
   test("POST /api/admin/templates — creates template", async ({ request }) => {
     const res = await request.post("/api/admin/templates", {
       headers: auth(),
-      data: { slug: "welcome", subject: "Welcome {{name}}", content: "<p>Hi {{name}}</p>" },
+      data: {
+        slug: templateSlug,
+        subject: "Welcome {{name}}",
+        content: "<p>Hi {{name}}</p>",
+      },
     });
     expect(res.status()).toBe(201);
   });
 
-  test("POST /api/admin/templates/:id/preview — renders template", async ({ request }) => {
+  test("POST /api/admin/templates/:id/preview — renders template", async ({
+    request,
+  }) => {
     // Create first
-    await request.post("/api/admin/templates", {
+    const createResponse = await request.post("/api/admin/templates", {
       headers: auth(),
-      data: { slug: "preview-test", subject: "Hi {{name}}", content: "<p>{{name}}</p>" },
+      data: {
+        slug: previewSlug,
+        subject: "Hi {{name}}",
+        content: "<p>{{name}}</p>",
+      },
     });
-    const res = await request.post("/api/admin/templates/preview-test/preview", {
-      headers: auth(),
-      data: { replacements: { name: "Alice" } },
-    });
+    const created = await createResponse.json();
+    const res = await request.post(
+      `/api/admin/templates/${created.data.id}/preview`,
+      {
+        headers: auth(),
+        data: { replacements: { name: "Alice" } },
+      },
+    );
     expect(res.status()).toBe(200);
     const body = await res.json();
     expect(body.data.subject).toBe("Hi Alice");
     expect(body.data.content).toBe("<p>Alice</p>");
   });
 
-  test("POST /api/admin/api-keys — creates and returns key", async ({ request }) => {
+  test("POST /api/admin/api-keys — creates and returns key", async ({
+    request,
+  }) => {
     const res = await request.post("/api/admin/api-keys", {
       headers: auth(),
       data: { name: "Test Key" },
@@ -106,5 +131,21 @@ test.describe("Admin CRUD", () => {
     expect(res.status()).toBe(200);
     const body = await res.json();
     expect(Array.isArray(body.data)).toBe(true);
+  });
+
+  test("template slugs are unique per tenant", async ({ request }) => {
+    const secondTenant = await signupUser("http://localhost:8787");
+    const res = await request.post("/api/admin/templates", {
+      headers: {
+        Authorization: `Bearer ${secondTenant.token}`,
+        "Content-Type": "application/json",
+      },
+      data: {
+        slug: templateSlug,
+        subject: "Tenant-specific welcome",
+        content: "<p>Welcome</p>",
+      },
+    });
+    expect(res.status()).toBe(201);
   });
 });
