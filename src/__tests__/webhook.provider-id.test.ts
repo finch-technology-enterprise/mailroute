@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   updateSet: undefined as unknown,
   updateWhere: undefined as unknown,
   insertedEvents: [] as Array<Record<string, unknown>>,
+  deletedEventIds: [] as unknown[],
   seenIdempotencyKeys: new Set<string>(),
   emailServiceSend: vi.fn(),
   selectCallIndex: 0,
@@ -52,6 +53,16 @@ vi.mock("drizzle-orm/d1", () => ({
           }
           mocks.seenIdempotencyKeys.add(key);
           mocks.insertedEvents.push(value);
+        },
+      }),
+    }),
+    delete: () => ({
+      where: (condition: { value?: unknown }) => ({
+        execute: async () => {
+          const key = mocks.insertedEvents.find((e) => e.id === condition.value)
+            ?.idempotencyKey as string | undefined;
+          if (key) mocks.seenIdempotencyKeys.delete(key);
+          mocks.deletedEventIds.push(condition.value);
         },
       }),
     }),
@@ -145,6 +156,7 @@ beforeEach(() => {
   mocks.updateSet = undefined;
   mocks.updateWhere = undefined;
   mocks.insertedEvents.length = 0;
+  mocks.deletedEventIds.length = 0;
   mocks.seenIdempotencyKeys.clear();
   mocks.emailServiceSend.mockReset();
   mocks.selectCallIndex = 0;
@@ -252,5 +264,31 @@ describe("webhook idempotency", () => {
 
     expect(mocks.insertedEvents).toHaveLength(2);
     expect(mocks.emailServiceSend).toHaveBeenCalledTimes(1);
+  });
+
+  it("releases the idempotency reservation when the retry-send fails, so a redelivery gets a real second attempt", async () => {
+    mocks.emailServiceSend
+      .mockRejectedValueOnce(new Error("all vendors down"))
+      .mockResolvedValueOnce({ providerMessageId: "retry-id" });
+
+    const first = await postWebhook({
+      messageId: "provider-123",
+      status: "bounced",
+    });
+
+    // The retry-send runs in the background (waitUntil); its failure must
+    // not surface as a webhook error response.
+    expect(first.status).toBe(200);
+    expect(mocks.emailServiceSend).toHaveBeenCalledTimes(1);
+    expect(mocks.insertedEvents).toHaveLength(1);
+    expect(mocks.deletedEventIds).toEqual([mocks.insertedEvents[0].id]);
+
+    const second = await postWebhook({
+      messageId: "provider-123",
+      status: "bounced",
+    });
+
+    expect(second.status).toBe(200);
+    expect(mocks.emailServiceSend).toHaveBeenCalledTimes(2);
   });
 });

@@ -59,6 +59,17 @@ function isUniqueConstraintError(error: unknown): boolean {
   return message.includes("UNIQUE constraint failed");
 }
 
+// Length-prefix the free-form parts (vendor, messageId can contain anything,
+// including the separator) so two different events can never collide onto
+// the same key regardless of content.
+function idempotencyKeyFor(
+  vendor: string,
+  messageId: string,
+  status: string,
+): string {
+  return `${vendor.length}:${vendor}:${messageId.length}:${messageId}:${status}`;
+}
+
 /**
  * Records the raw event for audit and dedupes on `idempotencyKey`. Returns
  * true when this exact event was already processed — vendors deliver
@@ -145,14 +156,15 @@ webhook.post("/:vendor", async (c) => {
 
   // Reserve this event's idempotency slot before any side effect. Vendors
   // deliver webhooks at-least-once, so the same event can arrive again.
+  const deliveryEventId = crypto.randomUUID();
   const alreadyProcessed = await recordDeliveryEvent(db, {
-    id: crypto.randomUUID(),
+    id: deliveryEventId,
     vendorName: vendor,
     providerEventId: messageId,
     eventType: status,
     providerMessageId: messageId,
     rawPayload: rawBody,
-    idempotencyKey: `${vendor}:${messageId}:${status}`,
+    idempotencyKey: idempotencyKeyFor(vendor, messageId, status),
     processedAt: new Date().toISOString(),
   });
 
@@ -206,7 +218,30 @@ webhook.post("/:vendor", async (c) => {
             );
           }
         } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
           console.error("Webhook retry failed:", err);
+          LogToNewRelic(c, "webhook:retry-failed", {
+            level: "ERROR",
+            vendor,
+            "context.messageId": messageId,
+            "context.error": message,
+          });
+          // The retry-send never happened (EmailService already exhausts
+          // its own internal retries/failover before throwing), so release
+          // this event's idempotency slot instead of consuming it forever —
+          // a future redelivery of this exact event should get another shot
+          // rather than silently losing the customer's retry email.
+          try {
+            await drizzle(c.env.D1_DATABASE)
+              .delete(DeliveryEvent)
+              .where(eq(DeliveryEvent.id, deliveryEventId))
+              .execute();
+          } catch (cleanupErr) {
+            console.error(
+              "Failed to release idempotency reservation:",
+              cleanupErr,
+            );
+          }
         }
       })(),
     );

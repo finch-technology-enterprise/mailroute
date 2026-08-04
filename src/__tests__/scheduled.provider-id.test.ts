@@ -3,8 +3,29 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   adapterSend: vi.fn(),
   updates: [] as Array<Record<string, unknown>>,
+  updateWhereConditions: [] as unknown[],
   candidates: [] as Array<Record<string, unknown>>,
   claimChanges: 1,
+}));
+
+vi.mock("drizzle-orm", () => ({
+  eq: (column: { name?: string }, value: unknown) => ({
+    op: "eq",
+    column: column.name,
+    value,
+  }),
+  and: (...conditions: unknown[]) => ({ op: "and", conditions }),
+  or: (...conditions: unknown[]) => ({ op: "or", conditions }),
+  lt: (column: { name?: string }, value: unknown) => ({
+    op: "lt",
+    column: column.name,
+    value,
+  }),
+  lte: (column: { name?: string }, value: unknown) => ({
+    op: "lte",
+    column: column.name,
+    value,
+  }),
 }));
 
 vi.mock("../services/email-vendor.service", () => ({
@@ -42,12 +63,13 @@ vi.mock("drizzle-orm/d1", () => ({
     }),
     update: () => ({
       set: (value: Record<string, unknown>) => ({
-        where: () => ({
-          execute: async () => {
-            mocks.updates.push(value);
-            return { meta: { changes: mocks.claimChanges } };
-          },
-        }),
+        where: (condition: unknown) => {
+          mocks.updateWhereConditions.push(condition);
+          mocks.updates.push(value);
+          return {
+            execute: async () => ({ meta: { changes: mocks.claimChanges } }),
+          };
+        },
       }),
     }),
   })),
@@ -91,6 +113,7 @@ afterEach(() => {
 beforeEach(() => {
   mocks.adapterSend.mockReset();
   mocks.updates.length = 0;
+  mocks.updateWhereConditions.length = 0;
   mocks.candidates = [baseItem()];
   mocks.claimChanges = 1;
 });
@@ -130,6 +153,25 @@ describe("scheduled row claiming", () => {
     expect(mocks.updates[0]).toEqual(
       expect.objectContaining({ status: "processing", attempt: 1 }),
     );
+  });
+
+  it("claims via a WHERE clause pinning both id and the status just read — not an unconditional update", async () => {
+    mocks.adapterSend.mockResolvedValue({ providerMessageId: "id-1" });
+
+    await Promise.all(await runScheduled());
+
+    // This is what actually makes the claim atomic: if a concurrent tick
+    // read the same row, its claim attempt only succeeds while status
+    // still matches what *it* read. A regression that drops the status
+    // conjunct (leaving only the id check) would make every claim
+    // unconditionally succeed — this assertion is what would catch that.
+    expect(mocks.updateWhereConditions[0]).toEqual({
+      op: "and",
+      conditions: [
+        { op: "eq", column: "id", value: "scheduled-1" },
+        { op: "eq", column: "status", value: "pending" },
+      ],
+    });
   });
 
   it("skips the send entirely when the claim fails (row already claimed elsewhere)", async () => {
