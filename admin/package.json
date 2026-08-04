@@ -8,12 +8,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@tiptap/react": "^3.29.0",
-    "@tiptap/starter-kit": "^3.29.0",
-    "motion": "^12.42.2",
+    "@tiptap/react": "^3.29.2",
+    "@tiptap/starter-kit": "^3.29.2",
+    "motion": "^12.43.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-router-dom": "^7.6.0",
+    "react-router-dom": "^7.18.2",
     "swagger-ui-react": "^5.32.11"
   },
   "devDependencies": {
